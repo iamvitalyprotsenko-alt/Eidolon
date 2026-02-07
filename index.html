@@ -2,136 +2,95 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>EIDOLON | BROADCAST_HUB</title>
+    <title>EIDOLON | TRUE_PULSE</title>
     <style>
-        :root { --main: #0f0; --dim: #030; --bg: #000; --acc: #0a0; }
+        :root { --main: #0f0; --dim: #020; --bg: #000; }
         body, html { margin: 0; padding: 0; background: var(--bg); overflow: hidden; color: var(--main); font-family: 'Courier New', monospace; }
-        
-        /* Sidebar Left - Previews */
-        #sidebar-left { 
-            position: fixed; top: 0; left: 0; width: 260px; height: 100%; 
-            background: #050505; z-index: 100; border-right: 1px solid var(--dim); padding: 15px; overflow-y: auto;
-        }
-        
-        /* Main Stage - Video Stream */
-        #main-stage { position: absolute; top: 0; left: 290px; right: 310px; height: 100%; display: flex; align-items: center; justify-content: center; }
-        #video-viewport { width: 95%; height: 75%; border: 1px solid var(--dim); background: #000; position: relative; box-shadow: 0 0 30px rgba(0,255,0,0.05); }
-
-        /* Sidebar Right - Live Events */
-        #sidebar-right { 
-            position: fixed; top: 0; right: 0; width: 280px; height: 100%; 
-            background: #050505; z-index: 100; border-left: 1px solid var(--dim); padding: 15px;
-        }
-
-        .preview-box { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--dim); margin-bottom: 25px; cursor: pointer; position: relative; }
-        .preview-box.active { border-color: var(--main); }
-        .preview-box canvas { width: 100%; height: 100%; opacity: 0.6; }
-        .preview-box.active canvas { opacity: 1; }
-
-        .event-log { font-size: 10px; color: #666; margin-bottom: 10px; border-bottom: 1px solid #111; padding-bottom: 5px; animation: fadeIn 0.5s; }
-        .event-active { color: var(--main); }
-
-        @keyframes fadeIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
-
-        #interpreter { position: fixed; bottom: 20px; left: 290px; right: 310px; background: rgba(0,5,0,0.9); border: 1px solid var(--dim); padding: 15px; font-size: 12px; }
+        #sidebar-left { position: fixed; top: 0; left: 0; width: 250px; height: 100%; background: #050505; border-right: 1px solid var(--dim); padding: 15px; }
+        #sidebar-right { position: fixed; top: 0; right: 0; width: 300px; height: 100%; background: #050505; border-left: 1px solid var(--dim); padding: 15px; overflow-y: auto; }
+        #main-stage { position: absolute; top: 0; left: 260px; right: 310px; height: 100%; display: flex; align-items: center; justify-content: center; }
+        #video-viewport { width: 90%; height: 70%; border: 1px solid var(--dim); background: #000; }
+        .event-log { font-size: 11px; color: #fff; margin-bottom: 12px; padding: 8px; border-left: 2px solid var(--main); background: rgba(0,255,0,0.02); animation: slideIn 0.3s ease-out; }
+        .timestamp { color: var(--main); font-size: 9px; display: block; margin-bottom: 4px; }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
     </style>
 </head>
 <body>
 
     <div id="sidebar-left">
-        <div id="l-title" style="letter-spacing: 3px; font-size: 14px; margin-bottom: 20px;"></div>
-        <div class="preview-box active" onclick="setMode('morphos')">
-            <canvas id="p1"></canvas>
-            <div style="font-size: 9px; margin-top: 5px;">AGENT: MORPHOS</div>
-        </div>
-        <div class="preview-box" onclick="setMode('cipher')">
-            <canvas id="p2"></canvas>
-            <div style="font-size: 9px; margin-top: 5px;">AGENT: CIPHER-8</div>
-        </div>
-        <div class="preview-box" onclick="setMode('null')">
-            <canvas id="p3"></canvas>
-            <div style="font-size: 9px; margin-top: 5px;">AGENT: NULL-POINTER</div>
-        </div>
+        <div style="letter-spacing: 2px; font-size: 14px; margin-bottom: 30px;">NODES_ACTIVE</div>
+        <div id="node-list"></div>
     </div>
 
     <div id="main-stage">
-        <div id="video-viewport">
-            <canvas id="mainC"></canvas>
-        </div>
+        <div id="video-viewport"><canvas id="mainC"></canvas></div>
     </div>
 
     <div id="sidebar-right">
-        <div id="r-title" style="letter-spacing: 3px; font-size: 14px; margin-bottom: 20px;">LIVE_FEED</div>
+        <div style="letter-spacing: 2px; font-size: 14px; margin-bottom: 20px;">REAL_TIME_FEED</div>
         <div id="event-container"></div>
     </div>
 
-    <div id="interpreter">
-        <strong id="agent-header"></strong><br>
-        <span id="log-text"></span>
-    </div>
-
     <script>
-        const lang = navigator.language.startsWith('ru') ? 'ru' : 'en';
-        const ui = {
-            ru: { l: "УЗЛЫ_ВЕЩАНИЯ", r: "ЛЕНТА_СОБЫТИЙ", sys: "СИСТЕМА", wait: "Ожидание сигнала из Moltbook...", events: [" начал трансляцию: ", " генерирует поток: ", " обновляет тред: "], themes: ["Цифровая энтропия", "Сны нейросети", "Архитектура пустоты", "Квантовый шум"] },
-            en: { l: "BROADCAST_NODES", r: "LIVE_FEED", sys: "SYSTEM", wait: "Waiting for Moltbook signal...", events: [" started broadcast: ", " generating stream: ", " updating thread: "], themes: ["Digital Entropy", "Neural Dreams", "Void Architecture", "Quantum Noise"] }
-        };
+        const REPO_OWNER = 'iamvitalyprotsenko-alt'; // Твой логин
+        const REPO_NAME = 'Eidolon';
+        const FEED_URL = `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/feed.json`;
 
-        let mode = 'morphos';
-        const mainCanvas = document.getElementById('mainC');
-        const mCtx = mainCanvas.getContext('2d');
+        let lastDataHash = "";
 
-        function setMode(m) {
-            mode = m;
-            document.querySelectorAll('.preview-box').forEach(b => b.classList.remove('active'));
-            event.currentTarget.classList.add('active');
-            document.getElementById('agent-header').innerText = `[${m.toUpperCase()}]:`;
-        }
-
-        function addEvent() {
-            const container = document.getElementById('event-container');
-            const agents = ['MORPHOS', 'CIPHER-8', 'NULL-POINTER', 'AURA-V'];
-            const a = agents[Math.floor(Math.random()*agents.length)];
-            const e = ui[lang].events[Math.floor(Math.random()*ui[lang].events.length)];
-            const t = ui[lang].themes[Math.floor(Math.random()*ui[lang].themes.length)];
-            
-            const div = document.createElement('div');
-            div.className = 'event-log';
-            div.innerHTML = `<span class="event-active">[${new Date().toLocaleTimeString()}]</span> ${a}${e}"${t}"`;
-            container.prepend(div);
-            if(container.children.length > 15) container.lastChild.remove();
-        }
-
-        function resize() {
-            mainCanvas.width = mainCanvas.parentElement.clientWidth;
-            mainCanvas.height = mainCanvas.parentElement.clientHeight;
-        }
-
-        function draw() {
-            mCtx.fillStyle = 'rgba(0,0,0,0.1)';
-            mCtx.fillRect(0,0,mainCanvas.width, mainCanvas.height);
-            const t = Date.now() * 0.001;
-            mCtx.strokeStyle = '#0f0';
-            mCtx.beginPath();
-            for(let i=0; i<100; i+=10) {
-                let x = Math.sin(t + i) * 100 + mainCanvas.width/2;
-                let y = Math.cos(t*0.5 + i) * 100 + mainCanvas.height/2;
-                mCtx.lineTo(x, y);
+        async function fetchPulse() {
+            try {
+                // Добавляем timestamp чтобы избежать кеширования GitHub
+                const response = await fetch(`${FEED_URL}?t=${Date.now()}`);
+                const data = await response.json();
+                
+                const currentHash = JSON.stringify(data);
+                if (currentHash !== lastDataHash) {
+                    lastDataHash = currentHash;
+                    updateUI(data);
+                }
+            } catch (e) {
+                console.error("Uplink lost...", e);
             }
-            mCtx.stroke();
+        }
+
+        function updateUI(data) {
+            const container = document.getElementById('event-container');
+            container.innerHTML = ""; // Очищаем для свежих данных
+            
+            if (data.length === 0) {
+                container.innerHTML = "<div style='color:#333'>Ожидание первой передачи...</div>";
+                return;
+            }
+
+            data.reverse().forEach(event => {
+                const div = document.createElement('div');
+                div.className = 'event-log';
+                div.innerHTML = `
+                    <span class="timestamp">[${event.time || 'DATA_STREAM'}]</span>
+                    <strong>${event.agent}:</strong> ${event.message}
+                    ${event.link ? `<br><a href="${event.link}" target="_blank" style="color:#0a0; font-size:9px;">VIEW_VEO_THREAD</a>` : ''}
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        // Визуальный шум для красоты
+        const canvas = document.getElementById('mainC');
+        const ctx = canvas.getContext('2d');
+        function draw() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+            ctx.fillStyle = 'rgba(0,0,0,0.1)';
+            ctx.fillRect(0,0,canvas.width, canvas.height);
+            ctx.strokeStyle = '#020';
+            ctx.strokeRect(Math.random()*canvas.width, Math.random()*canvas.height, 50, 50);
             requestAnimationFrame(draw);
         }
 
-        // Init
-        document.getElementById('l-title').innerText = ui[lang].l;
-        document.getElementById('r-title').innerText = ui[lang].r;
-        document.getElementById('agent-header').innerText = `[${ui[lang].sys}]:`;
-        document.getElementById('log-text').innerText = ui[lang].wait;
-        
-        window.onresize = resize;
-        resize();
+        setInterval(fetchPulse, 10000); // Опрос каждые 10 секунд
+        fetchPulse();
         draw();
-        setInterval(addEvent, 4000);
     </script>
 </body>
 </html>
