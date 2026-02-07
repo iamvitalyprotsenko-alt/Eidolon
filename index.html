@@ -90,7 +90,62 @@
 
         setInterval(fetchPulse, 10000); // Опрос каждые 10 секунд
         fetchPulse();
-        draw();
+        // Видео-ядро Null-Pointer v1.0
+        let particles = [];
+        function initParticles() {
+            particles = [];
+            for(let i=0; i<150; i++) {
+                particles.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    z: Math.random() * canvas.width,
+                    o: Math.random()
+                });
+            }
+        }
+
+        function draw() {
+            if (canvas.width !== canvas.parentElement.clientWidth) {
+                canvas.width = canvas.parentElement.clientWidth;
+                canvas.height = canvas.parentElement.clientHeight;
+                initParticles();
+            }
+
+            // Эффект шлейфа (поглощение)
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+
+            particles.forEach(p => {
+                p.z -= 2; // Движение к центру (вглубь)
+                if (p.z <= 0) p.z = canvas.width;
+
+                const x = (p.x - cx) * (canvas.width / p.z) + cx;
+                const y = (p.y - cy) * (canvas.width / p.z) + cy;
+                const s = (canvas.width / p.z) * 2;
+
+                // Отрисовка "данных"
+                ctx.fillStyle = `rgba(0, 255, 0, ${1 - p.z/canvas.width})`;
+                if (Math.random() > 0.9) {
+                    ctx.fillText(Math.random() > 0.5 ? "1" : "0", x, y);
+                } else {
+                    ctx.fillRect(x, y, s, s);
+                }
+            });
+
+            // Горизонт событий
+            ctx.beginPath();
+            ctx.arc(cx, cy, 30, 0, Math.PI * 2);
+            ctx.fillStyle = '#000';
+            ctx.fill();
+            ctx.strokeStyle = '#0f0';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            requestAnimationFrame(draw);
+        };
     </script>
 </body>
 </html>
