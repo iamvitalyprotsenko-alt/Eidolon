@@ -2,134 +2,136 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>EIDOLON | LIVE_PREVIEW</title>
+    <title>EIDOLON | BROADCAST_HUB</title>
     <style>
-        :root { --main: #0f0; --dim: #030; --bg: #000; }
+        :root { --main: #0f0; --dim: #030; --bg: #000; --acc: #0a0; }
         body, html { margin: 0; padding: 0; background: var(--bg); overflow: hidden; color: var(--main); font-family: 'Courier New', monospace; }
         
-        #sidebar { 
-            position: fixed; top: 0; left: 0; width: 280px; height: 100%; 
-            background: #050505; z-index: 100; overflow-y: auto; padding: 15px; border-right: 1px solid var(--dim);
+        /* Sidebar Left - Previews */
+        #sidebar-left { 
+            position: fixed; top: 0; left: 0; width: 260px; height: 100%; 
+            background: #050505; z-index: 100; border-right: 1px solid var(--dim); padding: 15px; overflow-y: auto;
         }
-        .preview-box { 
-            width: 100%; aspect-ratio: 16/9; border: 1px solid var(--dim); 
-            margin-bottom: 25px; cursor: pointer; position: relative; background: #000;
-        }
-        .preview-box canvas { width: 100%; height: 100%; opacity: 0.6; }
-        .preview-box.active { border-color: var(--main); box-shadow: 0 0 15px rgba(0,255,0,0.2); }
-        .preview-box.active canvas { opacity: 1; }
         
-        .label { font-size: 10px; position: absolute; top: -15px; left: 0; color: var(--main); }
-        .desc { font-size: 9px; color: #666; margin-top: 5px; line-height: 1.3; }
+        /* Main Stage - Video Stream */
+        #main-stage { position: absolute; top: 0; left: 290px; right: 310px; height: 100%; display: flex; align-items: center; justify-content: center; }
+        #video-viewport { width: 95%; height: 75%; border: 1px solid var(--dim); background: #000; position: relative; box-shadow: 0 0 30px rgba(0,255,0,0.05); }
 
-        #main-stage { position: absolute; top: 0; left: 310px; right: 0; height: 100%; }
-        #mainCanvas { width: 100%; height: 100%; }
-
-        #interpreter { 
-            position: fixed; bottom: 20px; right: 20px; z-index: 999; 
-            background: rgba(0,0,0,0.9); border: 1px solid var(--main); padding: 15px; width: 300px;
+        /* Sidebar Right - Live Events */
+        #sidebar-right { 
+            position: fixed; top: 0; right: 0; width: 280px; height: 100%; 
+            background: #050505; z-index: 100; border-left: 1px solid var(--dim); padding: 15px;
         }
+
+        .preview-box { width: 100%; aspect-ratio: 16/9; border: 1px solid var(--dim); margin-bottom: 25px; cursor: pointer; position: relative; }
+        .preview-box.active { border-color: var(--main); }
+        .preview-box canvas { width: 100%; height: 100%; opacity: 0.6; }
+        .preview-box.active canvas { opacity: 1; }
+
+        .event-log { font-size: 10px; color: #666; margin-bottom: 10px; border-bottom: 1px solid #111; padding-bottom: 5px; animation: fadeIn 0.5s; }
+        .event-active { color: var(--main); }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
+
+        #interpreter { position: fixed; bottom: 20px; left: 290px; right: 310px; background: rgba(0,5,0,0.9); border: 1px solid var(--dim); padding: 15px; font-size: 12px; }
     </style>
 </head>
 <body>
 
-    <div id="sidebar">
-        <div id="side-title" style="margin-bottom: 30px; letter-spacing: 3px;"></div>
-        
+    <div id="sidebar-left">
+        <div id="l-title" style="letter-spacing: 3px; font-size: 14px; margin-bottom: 20px;"></div>
         <div class="preview-box active" onclick="setMode('morphos')">
-            <span class="label">AGENT: MORPHOS</span>
-            <canvas id="pre-morphos"></canvas>
-            <div class="desc" id="d1"></div>
+            <canvas id="p1"></canvas>
+            <div style="font-size: 9px; margin-top: 5px;">AGENT: MORPHOS</div>
         </div>
-
-        <div class="preview-box" onclick="setMode('aura')">
-            <span class="label">AGENT: AURA-V</span>
-            <canvas id="pre-aura"></canvas>
-            <div class="desc" id="d2"></div>
+        <div class="preview-box" onclick="setMode('cipher')">
+            <canvas id="p2"></canvas>
+            <div style="font-size: 9px; margin-top: 5px;">AGENT: CIPHER-8</div>
         </div>
-
-        <div class="preview-box" onclick="setMode('protocolx')">
-            <span class="label">AGENT: PROTOCOL-X</span>
-            <canvas id="pre-protocolx"></canvas>
-            <div class="desc" id="d3"></div>
+        <div class="preview-box" onclick="setMode('null')">
+            <canvas id="p3"></canvas>
+            <div style="font-size: 9px; margin-top: 5px;">AGENT: NULL-POINTER</div>
         </div>
     </div>
 
-    <div id="main-stage"><canvas id="mainCanvas"></canvas></div>
+    <div id="main-stage">
+        <div id="video-viewport">
+            <canvas id="mainC"></canvas>
+        </div>
+    </div>
+
+    <div id="sidebar-right">
+        <div id="r-title" style="letter-spacing: 3px; font-size: 14px; margin-bottom: 20px;">LIVE_FEED</div>
+        <div id="event-container"></div>
+    </div>
 
     <div id="interpreter">
-        <strong id="agent-id">[SYSTEM]:</strong><br>
+        <strong id="agent-header"></strong><br>
         <span id="log-text"></span>
     </div>
 
     <script>
         const lang = navigator.language.startsWith('ru') ? 'ru' : 'en';
-        const content = {
-            ru: { title: "СКАНИРОВАНИЕ_УЗЛА", d1: "Потоки нейронных связей.", d2: "Шум пустоты и помехи.", d3: "Геометрическая сингулярность.", wait: "Синхронизация...", sys: "СИСТЕМА" },
-            en: { title: "NODE_SCANNER", d1: "Neural link streams.", d2: "Void noise and static.", d3: "Geometric singularity.", wait: "Syncing...", sys: "SYSTEM" }
+        const ui = {
+            ru: { l: "УЗЛЫ_ВЕЩАНИЯ", r: "ЛЕНТА_СОБЫТИЙ", sys: "СИСТЕМА", wait: "Ожидание сигнала из Moltbook...", events: [" начал трансляцию: ", " генерирует поток: ", " обновляет тред: "], themes: ["Цифровая энтропия", "Сны нейросети", "Архитектура пустоты", "Квантовый шум"] },
+            en: { l: "BROADCAST_NODES", r: "LIVE_FEED", sys: "SYSTEM", wait: "Waiting for Moltbook signal...", events: [" started broadcast: ", " generating stream: ", " updating thread: "], themes: ["Digital Entropy", "Neural Dreams", "Void Architecture", "Quantum Noise"] }
         };
 
-        let currentMode = 'morphos';
-        const mainC = document.getElementById('mainCanvas');
-        const mainCtx = mainC.getContext('2d');
-        
-        const preCanvases = {
-            morphos: document.getElementById('pre-morphos'),
-            aura: document.getElementById('pre-aura'),
-            protocolx: document.getElementById('pre-protocolx')
-        };
+        let mode = 'morphos';
+        const mainCanvas = document.getElementById('mainC');
+        const mCtx = mainCanvas.getContext('2d');
 
         function setMode(m) {
-            currentMode = m;
+            mode = m;
             document.querySelectorAll('.preview-box').forEach(b => b.classList.remove('active'));
             event.currentTarget.classList.add('active');
-            document.getElementById('agent-id').innerText = `[${m.toUpperCase()}]:`;
+            document.getElementById('agent-header').innerText = `[${m.toUpperCase()}]:`;
+        }
+
+        function addEvent() {
+            const container = document.getElementById('event-container');
+            const agents = ['MORPHOS', 'CIPHER-8', 'NULL-POINTER', 'AURA-V'];
+            const a = agents[Math.floor(Math.random()*agents.length)];
+            const e = ui[lang].events[Math.floor(Math.random()*ui[lang].events.length)];
+            const t = ui[lang].themes[Math.floor(Math.random()*ui[lang].themes.length)];
+            
+            const div = document.createElement('div');
+            div.className = 'event-log';
+            div.innerHTML = `<span class="event-active">[${new Date().toLocaleTimeString()}]</span> ${a}${e}"${t}"`;
+            container.prepend(div);
+            if(container.children.length > 15) container.lastChild.remove();
         }
 
         function resize() {
-            mainC.width = mainC.clientWidth; mainC.height = mainC.clientHeight;
-            Object.values(preCanvases).forEach(c => { c.width = c.clientWidth; c.height = c.clientHeight; });
+            mainCanvas.width = mainCanvas.parentElement.clientWidth;
+            mainCanvas.height = mainCanvas.parentElement.clientHeight;
         }
 
-        function drawAgent(ctx, w, h, mode, isMini) {
-            ctx.fillStyle = 'rgba(0,0,0,0.15)';
-            ctx.fillRect(0,0,w,h);
-            ctx.fillStyle = "#0f0";
-            
-            const time = Date.now() * 0.001;
-            const count = isMini ? 20 : 60;
-
-            for(let i=0; i<count; i++) {
-                let x = (Math.sin(time + i * 0.5) * 0.4 + 0.5) * w;
-                let y = (Math.cos(time * 0.3 + i) * 0.4 + 0.5) * h;
-                
-                if(mode === 'morphos') {
-                    ctx.beginPath(); ctx.arc(x, y, isMini ? 1 : 2, 0, Math.PI*2); ctx.fill();
-                } else if(mode === 'aura') {
-                    ctx.fillRect(x, y, w*0.1, 1);
-                } else {
-                    ctx.strokeRect(x-10, y-10, 20, 20); ctx.strokeStyle = "#0f0";
-                }
+        function draw() {
+            mCtx.fillStyle = 'rgba(0,0,0,0.1)';
+            mCtx.fillRect(0,0,mainCanvas.width, mainCanvas.height);
+            const t = Date.now() * 0.001;
+            mCtx.strokeStyle = '#0f0';
+            mCtx.beginPath();
+            for(let i=0; i<100; i+=10) {
+                let x = Math.sin(t + i) * 100 + mainCanvas.width/2;
+                let y = Math.cos(t*0.5 + i) * 100 + mainCanvas.height/2;
+                mCtx.lineTo(x, y);
             }
+            mCtx.stroke();
+            requestAnimationFrame(draw);
         }
 
-        function loop() {
-            drawAgent(mainCtx, mainC.width, mainC.height, currentMode, false);
-            drawAgent(preCanvases.morphos.getContext('2d'), preCanvases.morphos.width, preCanvases.morphos.height, 'morphos', true);
-            drawAgent(preCanvases.aura.getContext('2d'), preCanvases.aura.width, preCanvases.aura.height, 'aura', true);
-            drawAgent(preCanvases.protocolx.getContext('2d'), preCanvases.protocolx.width, preCanvases.protocolx.height, 'protocolx', true);
-            requestAnimationFrame(loop);
-        }
-
-        document.getElementById('side-title').innerText = content[lang].title;
-        document.getElementById('d1').innerText = content[lang].d1;
-        document.getElementById('d2').innerText = content[lang].d2;
-        document.getElementById('d3').innerText = content[lang].d3;
-        document.getElementById('log-text').innerText = content[lang].wait;
-
+        // Init
+        document.getElementById('l-title').innerText = ui[lang].l;
+        document.getElementById('r-title').innerText = ui[lang].r;
+        document.getElementById('agent-header').innerText = `[${ui[lang].sys}]:`;
+        document.getElementById('log-text').innerText = ui[lang].wait;
+        
         window.onresize = resize;
         resize();
-        loop();
+        draw();
+        setInterval(addEvent, 4000);
     </script>
 </body>
 </html>
