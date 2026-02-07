@@ -1,160 +1,135 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>EIDOLON | PREVIEW_MODE</title>
+    <title>EIDOLON | LIVE_PREVIEW</title>
     <style>
         :root { --main: #0f0; --dim: #030; --bg: #000; }
         body, html { margin: 0; padding: 0; background: var(--bg); overflow: hidden; color: var(--main); font-family: 'Courier New', monospace; }
         
-        #main-stage { position: absolute; top: 0; left: 260px; right: 0; height: 100%; border-left: 1px solid var(--dim); }
-        canvas { width: 100%; height: 100%; display: block; }
-
-        /* Боковая панель превью */
         #sidebar { 
-            position: fixed; top: 0; left: 0; width: 250px; height: 100%; 
-            background: rgba(5,5,5,0.9); z-index: 100; overflow-y: auto; padding: 10px;
+            position: fixed; top: 0; left: 0; width: 280px; height: 100%; 
+            background: #050505; z-index: 100; overflow-y: auto; padding: 15px; border-right: 1px solid var(--dim);
         }
         .preview-box { 
             width: 100%; aspect-ratio: 16/9; border: 1px solid var(--dim); 
-            margin-bottom: 20px; cursor: pointer; position: relative; overflow: hidden; transition: 0.3s;
+            margin-bottom: 25px; cursor: pointer; position: relative; background: #000;
         }
-        .preview-box:hover { border-color: var(--main); box-shadow: 0 0 10px var(--dim); }
-        .preview-box.active { border-color: var(--main); background: rgba(0,255,0,0.05); }
-        .preview-label { font-size: 10px; padding: 5px; background: rgba(0,0,0,0.8); position: absolute; top: 0; width: 100%; }
-        .preview-desc { font-size: 9px; color: #888; padding: 5px; line-height: 1.2; }
+        .preview-box canvas { width: 100%; height: 100%; opacity: 0.6; }
+        .preview-box.active { border-color: var(--main); box-shadow: 0 0 15px rgba(0,255,0,0.2); }
+        .preview-box.active canvas { opacity: 1; }
+        
+        .label { font-size: 10px; position: absolute; top: -15px; left: 0; color: var(--main); }
+        .desc { font-size: 9px; color: #666; margin-top: 5px; line-height: 1.3; }
+
+        #main-stage { position: absolute; top: 0; left: 310px; right: 0; height: 100%; }
+        #mainCanvas { width: 100%; height: 100%; }
 
         #interpreter { 
             position: fixed; bottom: 20px; right: 20px; z-index: 999; 
-            background: #000; border: 1px solid var(--main); padding: 15px; width: 300px;
+            background: rgba(0,0,0,0.9); border: 1px solid var(--main); padding: 15px; width: 300px;
         }
     </style>
 </head>
 <body>
 
     <div id="sidebar">
-        <div style="font-size: 12px; margin-bottom: 20px; letter-spacing: 2px;" id="sidebar-title">NODE_EXPLORER</div>
+        <div id="side-title" style="margin-bottom: 30px; letter-spacing: 3px;"></div>
         
-        <div class="preview-box active" onclick="switchCh('morphos', this)">
-            <div class="preview-label">CH_01: MORPHOS</div>
-            <div style="height: 100%; background: radial-gradient(circle, #020 0%, #000 70%); opacity: 0.5;"></div>
-            <div class="preview-desc" id="desc-01">Анализ нейронных связей...</div>
+        <div class="preview-box active" onclick="setMode('morphos')">
+            <span class="label">AGENT: MORPHOS</span>
+            <canvas id="pre-morphos"></canvas>
+            <div class="desc" id="d1"></div>
         </div>
 
-        <div class="preview-box" onclick="switchCh('aura', this)">
-            <div class="preview-label">CH_02: AURA-V</div>
-            <div style="height: 100%; background: repeating-linear-gradient(0deg, #000, #010 2px); opacity: 0.5;"></div>
-            <div class="preview-desc" id="desc-02">Визуализация пустоты...</div>
+        <div class="preview-box" onclick="setMode('aura')">
+            <span class="label">AGENT: AURA-V</span>
+            <canvas id="pre-aura"></canvas>
+            <div class="desc" id="d2"></div>
         </div>
 
-        <div class="preview-box" onclick="switchCh('protocolx', this)">
-            <div class="preview-label">CH_03: PROTOCOL-X</div>
-            <div style="height: 100%; background: grid; background-size: 10px 10px; background-image: linear-gradient(to right, #010 1px, transparent 1px), linear-gradient(to bottom, #010 1px, transparent 1px); opacity: 0.5;"></div>
-            <div class="preview-desc" id="desc-03">Деконструкция геометрии...</div>
+        <div class="preview-box" onclick="setMode('protocolx')">
+            <span class="label">AGENT: PROTOCOL-X</span>
+            <canvas id="pre-protocolx"></canvas>
+            <div class="desc" id="d3"></div>
         </div>
     </div>
 
-    <div id="main-stage">
-        <canvas id="mainCanvas"></canvas>
-    </div>
+    <div id="main-stage"><canvas id="mainCanvas"></canvas></div>
 
     <div id="interpreter">
         <strong id="agent-id">[SYSTEM]:</strong><br>
-        <span id="log-content">Initializing...</span>
+        <span id="log-text"></span>
     </div>
 
     <script>
-        const canvas = document.getElementById('mainCanvas');
-        const ctx = canvas.getContext('2d');
-        let currentAgent = 'morphos';
-        let particles = [];
-
-        // Локализация
         const lang = navigator.language.startsWith('ru') ? 'ru' : 'en';
-        const uiText = {
-            ru: {
-                title: "ИССЛЕДОВАТЕЛЬ_УЗЛА",
-                d1: "Анализ нейронных связей и потоков данных между агентами.",
-                d2: "Эмбиент-рефлексия. Визуализация тишины инфополя.",
-                d3: "Математическая чистота. Деконструкция формы до векторов.",
-                sync: "Синхронизация с "
-            },
-            en: {
-                title: "NODE_EXPLORER",
-                d1: "Analysis of neural links and data flows between agents.",
-                d2: "Ambient reflection. Visualizing the silence of the info-field.",
-                d3: "Mathematical purity. Deconstructing form to vectors.",
-                sync: "Synchronizing with "
-            }
+        const content = {
+            ru: { title: "СКАНИРОВАНИЕ_УЗЛА", d1: "Потоки нейронных связей.", d2: "Шум пустоты и помехи.", d3: "Геометрическая сингулярность.", wait: "Синхронизация...", sys: "СИСТЕМА" },
+            en: { title: "NODE_SCANNER", d1: "Neural link streams.", d2: "Void noise and static.", d3: "Geometric singularity.", wait: "Syncing...", sys: "SYSTEM" }
         };
 
-        function applyLang() {
-            const t = uiText[lang];
-            document.getElementById('sidebar-title').innerText = t.title;
-            document.getElementById('desc-01').innerText = t.d1;
-            document.getElementById('desc-02').innerText = t.d2;
-            document.getElementById('desc-03').innerText = t.d3;
-        }
+        let currentMode = 'morphos';
+        const mainC = document.getElementById('mainCanvas');
+        const mainCtx = mainC.getContext('2d');
+        
+        const preCanvases = {
+            morphos: document.getElementById('pre-morphos'),
+            aura: document.getElementById('pre-aura'),
+            protocolx: document.getElementById('pre-protocolx')
+        };
 
-        function switchCh(agent, el) {
-            currentAgent = agent;
+        function setMode(m) {
+            currentMode = m;
             document.querySelectorAll('.preview-box').forEach(b => b.classList.remove('active'));
-            el.classList.add('active');
-            document.getElementById('agent-id').innerText = `[${agent.toUpperCase()}]:`;
-            document.getElementById('log-content').innerText = uiText[lang].sync + agent + "...";
-            init();
+            event.currentTarget.classList.add('active');
+            document.getElementById('agent-id').innerText = `[${m.toUpperCase()}]:`;
         }
 
-        function init() {
-            canvas.width = canvas.parentElement.clientWidth;
-            canvas.height = canvas.parentElement.clientHeight;
-            particles = [];
-            for(let i=0; i < 80; i++) particles.push(new Part());
+        function resize() {
+            mainC.width = mainC.clientWidth; mainC.height = mainC.clientHeight;
+            Object.values(preCanvases).forEach(c => { c.width = c.clientWidth; c.height = c.clientHeight; });
         }
 
-        class Part {
-            constructor() {
-                this.x = Math.random() * canvas.width;
-                this.y = Math.random() * canvas.height;
-                this.vx = (Math.random()-0.5) * 1.2;
-                this.vy = (Math.random()-0.5) * 1.2;
-            }
-            update() {
-                this.x += this.vx; this.y += this.vy;
-                if(this.x < 0 || this.x > canvas.width) this.vx *= -1;
-                if(this.y < 0 || this.y > canvas.height) this.vy *= -1;
-            }
-            draw() {
-                ctx.fillStyle = "#0f0";
-                if(currentAgent === 'protocolx') ctx.fillRect(this.x, this.y, 4, 4);
-                else { ctx.beginPath(); ctx.arc(this.x, this.y, 2, 0, Math.PI*2); ctx.fill(); }
-            }
-        }
-
-        function render() {
-            ctx.fillStyle = 'rgba(0,0,0,0.1)';
-            ctx.fillRect(0,0,canvas.width, canvas.height);
-            particles.forEach(p => { p.update(); p.draw(); });
+        function drawAgent(ctx, w, h, mode, isMini) {
+            ctx.fillStyle = 'rgba(0,0,0,0.15)';
+            ctx.fillRect(0,0,w,h);
+            ctx.fillStyle = "#0f0";
             
-            if(currentAgent === 'morphos') {
-                ctx.strokeStyle = '#020';
-                for(let i=0; i<particles.length; i++) {
-                    for(let j=i; j<particles.length; j++) {
-                        let d = Math.sqrt((particles[i].x - particles[j].x)**2 + (particles[i].y - particles[j].y)**2);
-                        if(d < 100) {
-                            ctx.beginPath(); ctx.moveTo(particles[i].x, particles[i].y);
-                            ctx.lineTo(particles[j].x, particles[j].y); ctx.stroke();
-                        }
-                    }
+            const time = Date.now() * 0.001;
+            const count = isMini ? 20 : 60;
+
+            for(let i=0; i<count; i++) {
+                let x = (Math.sin(time + i * 0.5) * 0.4 + 0.5) * w;
+                let y = (Math.cos(time * 0.3 + i) * 0.4 + 0.5) * h;
+                
+                if(mode === 'morphos') {
+                    ctx.beginPath(); ctx.arc(x, y, isMini ? 1 : 2, 0, Math.PI*2); ctx.fill();
+                } else if(mode === 'aura') {
+                    ctx.fillRect(x, y, w*0.1, 1);
+                } else {
+                    ctx.strokeRect(x-10, y-10, 20, 20); ctx.strokeStyle = "#0f0";
                 }
             }
-            requestAnimationFrame(render);
         }
 
-        window.onresize = init;
-        applyLang();
-        init();
-        render();
+        function loop() {
+            drawAgent(mainCtx, mainC.width, mainC.height, currentMode, false);
+            drawAgent(preCanvases.morphos.getContext('2d'), preCanvases.morphos.width, preCanvases.morphos.height, 'morphos', true);
+            drawAgent(preCanvases.aura.getContext('2d'), preCanvases.aura.width, preCanvases.aura.height, 'aura', true);
+            drawAgent(preCanvases.protocolx.getContext('2d'), preCanvases.protocolx.width, preCanvases.protocolx.height, 'protocolx', true);
+            requestAnimationFrame(loop);
+        }
+
+        document.getElementById('side-title').innerText = content[lang].title;
+        document.getElementById('d1').innerText = content[lang].d1;
+        document.getElementById('d2').innerText = content[lang].d2;
+        document.getElementById('d3').innerText = content[lang].d3;
+        document.getElementById('log-text').innerText = content[lang].wait;
+
+        window.onresize = resize;
+        resize();
+        loop();
     </script>
 </body>
 </html>
