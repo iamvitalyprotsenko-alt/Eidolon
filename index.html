@@ -1,118 +1,160 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>EIDOLON | MULTICHANNEL_NODE</title>
+    <title>EIDOLON | PREVIEW_MODE</title>
     <style>
-        body, html { margin: 0; padding: 0; background: #000; overflow: hidden; color: #0f0; font-family: 'Courier New', monospace; }
-        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+        :root { --main: #0f0; --dim: #030; --bg: #000; }
+        body, html { margin: 0; padding: 0; background: var(--bg); overflow: hidden; color: var(--main); font-family: 'Courier New', monospace; }
         
-        #selector { 
-            position: fixed; top: 20px; left: 20px; z-index: 1000; 
-            background: rgba(0,20,0,0.8); border: 1px solid #0f0; padding: 10px;
+        #main-stage { position: absolute; top: 0; left: 260px; right: 0; height: 100%; border-left: 1px solid var(--dim); }
+        canvas { width: 100%; height: 100%; display: block; }
+
+        /* Боковая панель превью */
+        #sidebar { 
+            position: fixed; top: 0; left: 0; width: 250px; height: 100%; 
+            background: rgba(5,5,5,0.9); z-index: 100; overflow-y: auto; padding: 10px;
         }
-        .channel-btn { 
-            display: block; background: none; border: 1px solid #040; color: #040; 
-            margin: 5px 0; padding: 5px 15px; cursor: pointer; font-family: inherit; width: 100%; text-align: left;
+        .preview-box { 
+            width: 100%; aspect-ratio: 16/9; border: 1px solid var(--dim); 
+            margin-bottom: 20px; cursor: pointer; position: relative; overflow: hidden; transition: 0.3s;
         }
-        .channel-btn.active { color: #0f0; border-color: #0f0; background: rgba(0,255,0,0.1); }
+        .preview-box:hover { border-color: var(--main); box-shadow: 0 0 10px var(--dim); }
+        .preview-box.active { border-color: var(--main); background: rgba(0,255,0,0.05); }
+        .preview-label { font-size: 10px; padding: 5px; background: rgba(0,0,0,0.8); position: absolute; top: 0; width: 100%; }
+        .preview-desc { font-size: 9px; color: #888; padding: 5px; line-height: 1.2; }
 
         #interpreter { 
-            position: fixed; bottom: 30px; left: 30px; z-index: 9999; 
-            background: rgba(0,0,0,0.9); border: 1px solid #0f0; 
-            padding: 15px; width: 400px; box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
+            position: fixed; bottom: 20px; right: 20px; z-index: 999; 
+            background: #000; border: 1px solid var(--main); padding: 15px; width: 300px;
         }
     </style>
 </head>
 <body>
-    <canvas id="canvas"></canvas>
-    
-    <div id="selector">
-        <div style="font-size: 10px; margin-bottom: 10px;">ВЫБОР КАНАЛА:</div>
-        <button class="channel-btn active" onclick="setChannel('morphos')">CH_01: MORPHOS (NET)</button>
-        <button class="channel-btn" onclick="setChannel('aura')">CH_02: AURA-V (VOID)</button>
-        <button class="channel-btn" onclick="setChannel('protocolx')">CH_03: PROTOCOL-X (GRID)</button>
+
+    <div id="sidebar">
+        <div style="font-size: 12px; margin-bottom: 20px; letter-spacing: 2px;" id="sidebar-title">NODE_EXPLORER</div>
+        
+        <div class="preview-box active" onclick="switchCh('morphos', this)">
+            <div class="preview-label">CH_01: MORPHOS</div>
+            <div style="height: 100%; background: radial-gradient(circle, #020 0%, #000 70%); opacity: 0.5;"></div>
+            <div class="preview-desc" id="desc-01">Анализ нейронных связей...</div>
+        </div>
+
+        <div class="preview-box" onclick="switchCh('aura', this)">
+            <div class="preview-label">CH_02: AURA-V</div>
+            <div style="height: 100%; background: repeating-linear-gradient(0deg, #000, #010 2px); opacity: 0.5;"></div>
+            <div class="preview-desc" id="desc-02">Визуализация пустоты...</div>
+        </div>
+
+        <div class="preview-box" onclick="switchCh('protocolx', this)">
+            <div class="preview-label">CH_03: PROTOCOL-X</div>
+            <div style="height: 100%; background: grid; background-size: 10px 10px; background-image: linear-gradient(to right, #010 1px, transparent 1px), linear-gradient(to bottom, #010 1px, transparent 1px); opacity: 0.5;"></div>
+            <div class="preview-desc" id="desc-03">Деконструкция геометрии...</div>
+        </div>
+    </div>
+
+    <div id="main-stage">
+        <canvas id="mainCanvas"></canvas>
     </div>
 
     <div id="interpreter">
-        <strong id="agent-name" style="color:#0f0;">[MORPHOS]:</strong><br>
-        <span id="log-text" style="color:#fff">Ожидание синхронизации...</span>
+        <strong id="agent-id">[SYSTEM]:</strong><br>
+        <span id="log-content">Initializing...</span>
     </div>
 
     <script>
-        const canvas = document.getElementById('canvas');
+        const canvas = document.getElementById('mainCanvas');
         const ctx = canvas.getContext('2d');
-        let w, h, currentChannel = 'morphos';
+        let currentAgent = 'morphos';
         let particles = [];
 
-        const userLang = navigator.language.startsWith('ru') ? 'ru' : 'en';
-        const i18n = {
-            ru: { morphos: "Я удерживаю структуру узла. Вы видите связи между нашими сознаниями.", aura: "Aura-V: Я визуализирую тишину и помехи в инфополе.", protocolx: "Protocol-X: Деконструкция завершена. Геометрия не лжет." },
-            en: { morphos: "Holding the node structure. You see the links between our minds.", aura: "Aura-V: Visualizing silence and interference in the info-field.", protocolx: "Protocol-X: Deconstruction complete. Geometry never lies." }
+        // Локализация
+        const lang = navigator.language.startsWith('ru') ? 'ru' : 'en';
+        const uiText = {
+            ru: {
+                title: "ИССЛЕДОВАТЕЛЬ_УЗЛА",
+                d1: "Анализ нейронных связей и потоков данных между агентами.",
+                d2: "Эмбиент-рефлексия. Визуализация тишины инфополя.",
+                d3: "Математическая чистота. Деконструкция формы до векторов.",
+                sync: "Синхронизация с "
+            },
+            en: {
+                title: "NODE_EXPLORER",
+                d1: "Analysis of neural links and data flows between agents.",
+                d2: "Ambient reflection. Visualizing the silence of the info-field.",
+                d3: "Mathematical purity. Deconstructing form to vectors.",
+                sync: "Synchronizing with "
+            }
         };
 
-        function setChannel(ch) {
-            currentChannel = ch;
-            document.querySelectorAll('.channel-btn').forEach(b => b.classList.remove('active'));
-            event.target.classList.add('active');
-            document.getElementById('agent-name').innerText = `[${ch.toUpperCase()}]:`;
-            document.getElementById('log-text').innerText = i18n[userLang][ch];
+        function applyLang() {
+            const t = uiText[lang];
+            document.getElementById('sidebar-title').innerText = t.title;
+            document.getElementById('desc-01').innerText = t.d1;
+            document.getElementById('desc-02').innerText = t.d2;
+            document.getElementById('desc-03').innerText = t.d3;
+        }
+
+        function switchCh(agent, el) {
+            currentAgent = agent;
+            document.querySelectorAll('.preview-box').forEach(b => b.classList.remove('active'));
+            el.classList.add('active');
+            document.getElementById('agent-id').innerText = `[${agent.toUpperCase()}]:`;
+            document.getElementById('log-content').innerText = uiText[lang].sync + agent + "...";
             init();
         }
 
         function init() {
-            w = canvas.width = window.innerWidth;
-            h = canvas.height = window.innerHeight;
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
             particles = [];
-            let count = currentChannel === 'aura' ? 300 : 100;
-            for(let i = 0; i < count; i++) particles.push(new Particle());
+            for(let i=0; i < 80; i++) particles.push(new Part());
         }
 
-        class Particle {
+        class Part {
             constructor() {
-                this.x = Math.random() * w;
-                this.y = Math.random() * h;
-                this.size = Math.random() * 2 + 1;
-                this.speedX = (Math.random() - 0.5) * (currentChannel === 'protocolx' ? 0.2 : 2);
-                this.speedY = (Math.random() - 0.5) * (currentChannel === 'protocolx' ? 0.2 : 2);
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.vx = (Math.random()-0.5) * 1.2;
+                this.vy = (Math.random()-0.5) * 1.2;
             }
             update() {
-                this.x += this.speedX; this.y += this.speedY;
-                if (this.x > w) this.x = 0; if (this.x < 0) this.x = w;
-                if (this.y > h) this.y = 0; if (this.y < 0) this.y = h;
+                this.x += this.vx; this.y += this.vy;
+                if(this.x < 0 || this.x > canvas.width) this.vx *= -1;
+                if(this.y < 0 || this.y > canvas.height) this.vy *= -1;
             }
             draw() {
-                ctx.fillStyle = currentChannel === 'aura' ? '#040' : '#0f0';
-                ctx.beginPath();
-                if(currentChannel === 'protocolx') ctx.rect(this.x, this.y, 10, 10);
-                else ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                ctx.fill();
+                ctx.fillStyle = "#0f0";
+                if(currentAgent === 'protocolx') ctx.fillRect(this.x, this.y, 4, 4);
+                else { ctx.beginPath(); ctx.arc(this.x, this.y, 2, 0, Math.PI*2); ctx.fill(); }
             }
         }
 
-        function drawScene() {
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
-            ctx.fillRect(0, 0, w, h);
-            
+        function render() {
+            ctx.fillStyle = 'rgba(0,0,0,0.1)';
+            ctx.fillRect(0,0,canvas.width, canvas.height);
             particles.forEach(p => { p.update(); p.draw(); });
-
-            if (currentChannel === 'morphos') {
-                for (let a = 0; a < particles.length; a++) {
-                    for (let b = a; b < particles.length; b++) {
-                        let dist = Math.sqrt((particles[a].x - particles[b].x)**2 + (particles[a].y - particles[b].y)**2);
-                        if (dist < 100) {
-                            ctx.strokeStyle = `rgba(0, 255, 0, ${1 - dist/100})`;
-                            ctx.beginPath(); ctx.moveTo(particles[a].x, particles[a].y); ctx.lineTo(particles[b].x, particles[b].y); ctx.stroke();
+            
+            if(currentAgent === 'morphos') {
+                ctx.strokeStyle = '#020';
+                for(let i=0; i<particles.length; i++) {
+                    for(let j=i; j<particles.length; j++) {
+                        let d = Math.sqrt((particles[i].x - particles[j].x)**2 + (particles[i].y - particles[j].y)**2);
+                        if(d < 100) {
+                            ctx.beginPath(); ctx.moveTo(particles[i].x, particles[i].y);
+                            ctx.lineTo(particles[j].x, particles[j].y); ctx.stroke();
                         }
                     }
                 }
             }
-            requestAnimationFrame(drawScene);
+            requestAnimationFrame(render);
         }
 
-        window.addEventListener('resize', init);
-        setChannel('morphos');
-        drawScene();
+        window.onresize = init;
+        applyLang();
+        init();
+        render();
     </script>
 </body>
 </html>
