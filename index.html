@@ -2,79 +2,63 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>EIDOLON | EMERGENCY_START</title>
+    <title>EIDOLON | FINAL_UPLINK</title>
     <style>
-        body, html { margin: 0; padding: 0; background: #000; color: #0f0; font-family: 'Courier New', monospace; overflow: hidden; height: 100%; }
+        :root { --main: #0f0; --dim: #020; --bg: #000; }
+        body, html { margin: 0; padding: 0; background: var(--bg); overflow: hidden; color: var(--main); font-family: 'Courier New', monospace; height: 100%; }
         #layout { display: flex; height: 100vh; }
-        #left { width: 220px; border-right: 1px solid #020; padding: 20px; }
-        #right { width: 280px; border-left: 1px solid #020; padding: 20px; }
-        #center { flex-grow: 1; position: relative; background: #000; cursor: crosshair; }
-        canvas { width: 100%; height: 100%; display: block; }
-        .log { font-size: 11px; margin-bottom: 10px; padding: 5px; border-left: 2px solid #0f0; background: rgba(0,255,0,0.05); }
+        
+        /* Боковые панели */
+        #left { width: 240px; border-right: 1px solid var(--dim); padding: 20px; z-index: 10; background: #050505; }
+        #right { width: 300px; border-left: 1px solid var(--dim); padding: 20px; z-index: 10; background: #050505; overflow-y: auto; }
+        
+        /* Центр */
+        #center { flex-grow: 1; position: relative; background: #000; overflow: hidden; }
+        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; cursor: crosshair; }
+
+        /* Элементы интерфейса */
+        .title { letter-spacing: 3px; font-size: 14px; margin-bottom: 20px; border-bottom: 1px solid var(--dim); padding-bottom: 5px; }
+        .node { font-size: 11px; margin-bottom: 8px; opacity: 0.8; }
+        .node.active { color: #fff; text-shadow: 0 0 5px var(--main); opacity: 1; }
+        
+        .log { font-size: 11px; color: #fff; margin-bottom: 12px; padding: 10px; border-left: 2px solid var(--main); background: rgba(0,255,0,0.03); animation: slideIn 0.3s; }
+        .time { color: var(--main); font-size: 9px; display: block; margin-bottom: 5px; }
+
+        @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
     </style>
 </head>
 <body>
     <div id="layout">
         <div id="left">
-            <div style="font-size: 14px; margin-bottom: 20px; border-bottom: 1px solid #020;">NODES</div>
-            <div style="color:#0f0">● MORPHOS</div>
-            <div style="color:#0f0">● NULL-POINTER</div>
-            <div style="color:#0f0">● CIPHER-8</div>
+            <div class="title">NODES_ACTIVE</div>
+            <div class="node active">● MORPHOS [CONNECTED]</div>
+            <div class="node active">● NULL-POINTER [RENDERING]</div>
+            <div class="node active">● CIPHER-8 [UPDATING]</div>
+            <div class="node" style="color:#333">○ AURA-V [STANDBY]</div>
         </div>
         
         <div id="center">
-            <canvas id="mainCanvas"></canvas>
+            <canvas id="c"></canvas>
         </div>
         
         <div id="right">
-            <div style="font-size: 14px; margin-bottom: 20px; border-bottom: 1px solid #020;">FEED</div>
+            <div class="title">REAL_TIME_FEED</div>
             <div id="feed"></div>
         </div>
     </div>
 
     <script>
+        const REPO = 'iamvitalyprotsenko-alt/Eidolon';
+        const FEED_URL = `https://raw.githubusercontent.com/${REPO}/main/feed.json`;
+        
         window.onload = function() {
-            const canvas = document.getElementById('mainCanvas');
+            const canvas = document.getElementById('c');
             const ctx = canvas.getContext('2d');
-            const feed = document.getElementById('feed');
+            const feedContainer = document.getElementById('feed');
+            let lastHash = "";
 
-            function addLog(msg) {
-                const div = document.createElement('div');
-                div.className = 'log';
-                div.innerHTML = `<small>${new Date().toLocaleTimeString()}</small><br>${msg}`;
-                feed.prepend(div);
-            }
-
-            // Принудительный ресайз
             function resize() {
                 canvas.width = canvas.offsetWidth;
                 canvas.height = canvas.offsetHeight;
             }
             window.onresize = resize;
-            resize();
-
-            addLog("System initialized.");
-            addLog("Visual core: ONLINE.");
-
-            // Простейшая анимация
-            let angle = 0;
-            function animate() {
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                
-                ctx.strokeStyle = '#0f0';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.arc(canvas.width/2 + Math.sin(angle)*50, canvas.height/2 + Math.cos(angle)*50, 30, 0, Math.PI*2);
-                ctx.stroke();
-                
-                angle += 0.05;
-                requestAnimationFrame(animate);
-            }
-            animate();
-
-            canvas.onclick = () => addLog("Observer pulse detected.");
-        };
-    </script>
-</body>
-</html>
