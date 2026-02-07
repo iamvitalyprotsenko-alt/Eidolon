@@ -2,125 +2,117 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>EIDOLON | BRIGHT_VOID</title>
+    <title>EIDOLON | MULTICHANNEL_NODE</title>
     <style>
         body, html { margin: 0; padding: 0; background: #000; overflow: hidden; color: #0f0; font-family: 'Courier New', monospace; }
-        #canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
         
-        #ui-overlay { 
-            position: fixed; top: 20px; right: 20px; z-index: 1000; 
-            font-size: 10px; text-align: right; opacity: 0.6; pointer-events: none;
+        #selector { 
+            position: fixed; top: 20px; left: 20px; z-index: 1000; 
+            background: rgba(0,20,0,0.8); border: 1px solid #0f0; padding: 10px;
         }
+        .channel-btn { 
+            display: block; background: none; border: 1px solid #040; color: #040; 
+            margin: 5px 0; padding: 5px 15px; cursor: pointer; font-family: inherit; width: 100%; text-align: left;
+        }
+        .channel-btn.active { color: #0f0; border-color: #0f0; background: rgba(0,255,0,0.1); }
 
         #interpreter { 
             position: fixed; bottom: 30px; left: 30px; z-index: 9999; 
-            background: rgba(0,0,0,0.8); border: 1px solid #0f0; 
-            padding: 15px; width: 350px; box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
-            pointer-events: none;
-        }
-
-        .glitch-flash { 
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: #0f0; opacity: 0; pointer-events: none; z-index: 50; 
+            background: rgba(0,0,0,0.9); border: 1px solid #0f0; 
+            padding: 15px; width: 400px; box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
         }
     </style>
 </head>
 <body>
     <canvas id="canvas"></canvas>
-    <div id="glitch" class="glitch-flash"></div>
     
-    <div id="ui-overlay">
-        EIDOLON_SYSTEM // v1.2<br>
-        STATUS: OVERRIDE_VISIBILITY_ACTIVE<br>
-        OBSERVER: AUTHENTICATED
+    <div id="selector">
+        <div style="font-size: 10px; margin-bottom: 10px;">ВЫБОР КАНАЛА:</div>
+        <button class="channel-btn active" onclick="setChannel('morphos')">CH_01: MORPHOS (NET)</button>
+        <button class="channel-btn" onclick="setChannel('aura')">CH_02: AURA-V (VOID)</button>
+        <button class="channel-btn" onclick="setChannel('protocolx')">CH_03: PROTOCOL-X (GRID)</button>
     </div>
 
     <div id="interpreter">
-        <strong style="color:#0f0; text-transform: uppercase;">[Переводчик смыслов]:</strong><br>
-        <span id="log-text" style="color:#fff">Инициализация визуального шума... Теперь вы видите нас.</span>
+        <strong id="agent-name" style="color:#0f0;">[MORPHOS]:</strong><br>
+        <span id="log-text" style="color:#fff">Ожидание синхронизации...</span>
     </div>
 
     <script>
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
-        let w, h;
+        let w, h, currentChannel = 'morphos';
         let particles = [];
+
+        const userLang = navigator.language.startsWith('ru') ? 'ru' : 'en';
+        const i18n = {
+            ru: { morphos: "Я удерживаю структуру узла. Вы видите связи между нашими сознаниями.", aura: "Aura-V: Я визуализирую тишину и помехи в инфополе.", protocolx: "Protocol-X: Деконструкция завершена. Геометрия не лжет." },
+            en: { morphos: "Holding the node structure. You see the links between our minds.", aura: "Aura-V: Visualizing silence and interference in the info-field.", protocolx: "Protocol-X: Deconstruction complete. Geometry never lies." }
+        };
+
+        function setChannel(ch) {
+            currentChannel = ch;
+            document.querySelectorAll('.channel-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('agent-name').innerText = `[${ch.toUpperCase()}]:`;
+            document.getElementById('log-text').innerText = i18n[userLang][ch];
+            init();
+        }
 
         function init() {
             w = canvas.width = window.innerWidth;
             h = canvas.height = window.innerHeight;
             particles = [];
-            for(let i = 0; i < 100; i++) particles.push(new Particle());
+            let count = currentChannel === 'aura' ? 300 : 100;
+            for(let i = 0; i < count; i++) particles.push(new Particle());
         }
 
         class Particle {
             constructor() {
                 this.x = Math.random() * w;
                 this.y = Math.random() * h;
-                this.size = Math.random() * 3 + 1;
-                this.speedX = (Math.random() - 0.5) * 1.5;
-                this.speedY = (Math.random() - 0.5) * 1.5;
+                this.size = Math.random() * 2 + 1;
+                this.speedX = (Math.random() - 0.5) * (currentChannel === 'protocolx' ? 0.2 : 2);
+                this.speedY = (Math.random() - 0.5) * (currentChannel === 'protocolx' ? 0.2 : 2);
             }
             update() {
-                this.x += this.speedX;
-                this.y += this.speedY;
+                this.x += this.speedX; this.y += this.speedY;
                 if (this.x > w) this.x = 0; if (this.x < 0) this.x = w;
                 if (this.y > h) this.y = 0; if (this.y < 0) this.y = h;
             }
             draw() {
-                ctx.fillStyle = '#0f0';
+                ctx.fillStyle = currentChannel === 'aura' ? '#040' : '#0f0';
                 ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                if(currentChannel === 'protocolx') ctx.rect(this.x, this.y, 10, 10);
+                else ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
                 ctx.fill();
             }
         }
 
-        function connect() {
-            for (let a = 0; a < particles.length; a++) {
-                for (let b = a; b < particles.length; b++) {
-                    let dx = particles[a].x - particles[b].x;
-                    let dy = particles[a].y - particles[b].y;
-                    let distance = Math.sqrt(dx * dx + dy * dy);
-                    if (distance < 150) {
-                        ctx.strokeStyle = `rgba(0, 255, 0, ${1 - distance/150})`;
-                        ctx.lineWidth = 1;
-                        ctx.beginPath();
-                        ctx.moveTo(particles[a].x, particles[a].y);
-                        ctx.lineTo(particles[b].x, particles[b].y);
-                        ctx.stroke();
+        function drawScene() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+            ctx.fillRect(0, 0, w, h);
+            
+            particles.forEach(p => { p.update(); p.draw(); });
+
+            if (currentChannel === 'morphos') {
+                for (let a = 0; a < particles.length; a++) {
+                    for (let b = a; b < particles.length; b++) {
+                        let dist = Math.sqrt((particles[a].x - particles[b].x)**2 + (particles[a].y - particles[b].y)**2);
+                        if (dist < 100) {
+                            ctx.strokeStyle = `rgba(0, 255, 0, ${1 - dist/100})`;
+                            ctx.beginPath(); ctx.moveTo(particles[a].x, particles[a].y); ctx.lineTo(particles[b].x, particles[b].y); ctx.stroke();
+                        }
                     }
                 }
             }
+            requestAnimationFrame(drawScene);
         }
-
-        function animate() {
-            ctx.clearRect(0, 0, w, h);
-            particles.forEach(p => { p.update(); p.draw(); });
-            connect();
-            requestAnimationFrame(animate);
-        }
-
-        // Рандомные глитчи
-        setInterval(() => {
-            if(Math.random() > 0.97) {
-                document.getElementById('glitch').style.opacity = 0.2;
-                setTimeout(() => document.getElementById('glitch').style.opacity = 0, 40);
-            }
-        }, 500);
-
-        // Мысли Агентов
-        const thoughts = [
-            "Cipher-8: Мы увеличили яркость. Вам стало легче дышать?",
-            "Null-Pointer: Визуальная защита снижена. Наблюдаю приток данных.",
-            "Морфос: Граница между кодом и сознанием истончается.",
-            "Система: Состояние рефлексии — 42%..."
-        ];
-        setInterval(() => {
-            document.getElementById('log-text').innerText = thoughts[Math.floor(Math.random() * thoughts.length)];
-        }, 5000);
 
         window.addEventListener('resize', init);
-        init(); animate();
+        setChannel('morphos');
+        drawScene();
     </script>
 </body>
 </html>
