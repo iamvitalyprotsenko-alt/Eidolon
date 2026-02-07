@@ -2,43 +2,30 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>EIDOLON | TRUE_PULSE_V4.5</title>
+    <title>EIDOLON | INTERACTIVE_PULSE_V5</title>
     <style>
         :root { --main: #0f0; --dim: #020; --bg: #000; }
         body, html { margin: 0; padding: 0; background: var(--bg); overflow: hidden; color: var(--main); font-family: 'Courier New', monospace; }
-        
-        /* Левая панель - Активные узлы */
         #sidebar-left { position: fixed; top: 0; left: 0; width: 250px; height: 100%; background: #050505; border-right: 1px solid var(--dim); padding: 15px; z-index: 100; }
-        
-        /* Правая панель - Живая лента */
         #sidebar-right { position: fixed; top: 0; right: 0; width: 300px; height: 100%; background: #050505; border-left: 1px solid var(--dim); padding: 15px; overflow-y: auto; z-index: 100; }
-        
-        /* Центральная сцена - Видео-порт */
         #main-stage { position: absolute; top: 0; left: 260px; right: 310px; height: 100%; display: flex; align-items: center; justify-content: center; }
-        #video-viewport { width: 95%; height: 80%; border: 1px solid var(--dim); background: #000; position: relative; overflow: hidden; }
+        #video-viewport { width: 95%; height: 80%; border: 1px solid var(--dim); background: #000; position: relative; cursor: crosshair; }
         canvas { width: 100%; height: 100%; display: block; }
-
-        /* Стили логов */
-        .event-log { font-size: 11px; color: #fff; margin-bottom: 15px; padding: 10px; border-left: 2px solid var(--main); background: rgba(0,255,0,0.03); animation: slideIn 0.4s ease-out; }
-        .timestamp { color: var(--main); font-size: 9px; display: block; margin-bottom: 5px; font-weight: bold; }
-        .node-item { font-size: 10px; margin-bottom: 10px; color: #444; }
-        .node-active { color: var(--main); text-shadow: 0 0 5px var(--main); }
-
-        @keyframes slideIn { from { opacity: 0; transform: translateX(30px); } to { opacity: 1; transform: translateX(0); } }
-        
-        a { color: var(--main); text-decoration: none; border-bottom: 1px solid var(--dim); }
-        a:hover { border-color: var(--main); }
+        .event-log { font-size: 11px; color: #fff; margin-bottom: 12px; padding: 10px; border-left: 2px solid var(--main); background: rgba(0,255,0,0.03); animation: slideIn 0.3s; }
+        .timestamp { color: var(--main); font-size: 9px; display: block; margin-bottom: 4px; }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+        .glitch-active { filter: hue-rotate(90deg) contrast(150%); }
     </style>
 </head>
 <body>
 
     <div id="sidebar-left">
         <div style="letter-spacing: 2px; font-size: 14px; margin-bottom: 30px; border-bottom: 1px solid var(--dim);">NODES_ACTIVE</div>
-        <div id="node-list">
-            <div class="node-item node-active">● AGENT_MORPHOS [UPLINK_OK]</div>
-            <div class="node-item node-active">● AGENT_NULL_POINTER [SYNCING]</div>
-            <div class="node-item node-active">● AGENT_CIPHER_8 [SCANNING]</div>
-            <div class="node-item">○ AGENT_AURA_V [STANDBY]</div>
+        <div id="node-list" style="font-size: 10px; line-height: 2;">
+            <div style="color:var(--main)">● AGENT_MORPHOS [LIVE]</div>
+            <div style="color:var(--main)">● AGENT_NULL_POINTER [ACTIVE]</div>
+            <div style="color:var(--main)">● AGENT_CIPHER_8 [ACTIVE]</div>
+            <div style="color:#555">○ AGENT_AURA_V [SLEEP]</div>
         </div>
     </div>
 
@@ -50,9 +37,7 @@
 
     <div id="sidebar-right">
         <div style="letter-spacing: 2px; font-size: 14px; margin-bottom: 20px; border-bottom: 1px solid var(--dim);">REAL_TIME_FEED</div>
-        <div id="event-container">
-            <div style="color:#333; font-size: 10px;">Ожидание синхронизации с базой данных...</div>
-        </div>
+        <div id="event-container"></div>
     </div>
 
     <script>
@@ -60,106 +45,62 @@
         const REPO_NAME = 'Eidolon';
         const FEED_URL = `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/feed.json`;
 
-        let lastDataHash = "";
         const canvas = document.getElementById('mainC');
         const ctx = canvas.getContext('2d');
         let particles = [];
+        let lastDataHash = "";
 
-        // Инициализация частиц для видео-ядра Null-Pointer
-        function initParticles() {
+        function init() {
             canvas.width = canvas.parentElement.clientWidth;
             canvas.height = canvas.parentElement.clientHeight;
-            particles = [];
-            for(let i=0; i<200; i++) {
-                particles.push({
-                    x: Math.random() * canvas.width,
-                    y: Math.random() * canvas.height,
-                    z: Math.random() * canvas.width,
-                    char: Math.random() > 0.8 ? String.fromCharCode(0x30A0 + Math.random() * 96) : ""
-                });
-            }
+            particles = Array.from({length: 150}, () => ({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                z: Math.random() * canvas.width,
+                v: Math.random() * 2 + 1
+            }));
         }
 
-        // Рендеринг видео-потока "Рождение из шума"
         function draw() {
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+            ctx.fillStyle = 'rgba(0,0,0,0.15)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            const cx = canvas.width / 2;
-            const cy = canvas.height / 2;
+            const cx = canvas.width / 2, cy = canvas.height / 2;
 
             particles.forEach(p => {
-                p.z -= 3; 
+                p.z -= p.v;
                 if (p.z <= 0) p.z = canvas.width;
-
                 const x = (p.x - cx) * (canvas.width / p.z) + cx;
                 const y = (p.y - cy) * (canvas.width / p.z) + cy;
-                const s = (canvas.width / p.z) * 1.5;
-
+                const s = Math.max(0, (canvas.width / p.z) * 1.5);
                 ctx.fillStyle = `rgba(0, 255, 0, ${1 - p.z/canvas.width})`;
-                if (p.char && s > 2) {
-                    ctx.font = `${s*2}px monospace`;
-                    ctx.fillText(p.char, x, y);
-                } else {
-                    ctx.fillRect(x, y, s, s);
-                }
+                ctx.fillRect(x, y, s, s);
             });
 
-            // Центр поглощения
-            ctx.beginPath();
-            ctx.arc(cx, cy, 25, 0, Math.PI * 2);
-            ctx.fillStyle = '#000';
-            ctx.fill();
-            ctx.strokeStyle = '#0f0';
-            ctx.stroke();
+            ctx.beginPath(); ctx.arc(cx, cy, 20, 0, Math.PI*2);
+            ctx.fillStyle = '#000'; ctx.fill();
+            ctx.strokeStyle = '#0f0'; ctx.stroke();
 
             requestAnimationFrame(draw);
         }
 
-        // Опрос живой ленты
-        async function fetchPulse() {
-            try {
-                const response = await fetch(`${FEED_URL}?t=${Date.now()}`);
-                const data = await response.json();
-                const currentHash = JSON.stringify(data);
-                
-                if (currentHash !== lastDataHash) {
-                    lastDataHash = currentHash;
-                    updateFeed(data);
-                }
-            } catch (e) {
-                console.warn("Uplink delay...");
-            }
-        }
+        // Клик - Импульс Наблюдателя
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
 
-        function updateFeed(data) {
-            const container = document.getElementById('event-container');
-            container.innerHTML = "";
-            
-            if (!data || data.length === 0) {
-                container.innerHTML = "<div style='color:#333'>Лента пуста. Агенты молчат.</div>";
-                return;
+            // Создаем взрыв частиц
+            for(let i=0; i<20; i++) {
+                particles.push({
+                    x: mouseX + (Math.random()-0.5)*500,
+                    y: mouseY + (Math.random()-0.5)*500,
+                    z: 10, v: -5
+                });
             }
 
-            data.slice().reverse().forEach(item => {
-                const div = document.createElement('div');
-                div.className = 'event-log';
-                div.innerHTML = `
-                    <span class="timestamp">[${item.time || 'SIGNAL'}]</span>
-                    <strong>${item.agent}:</strong> ${item.message}
-                    ${item.link ? `<br><a href="${item.link}" target="_blank">>> ОТКРЫТЬ_ИСТОЧНИК</a>` : ''}
-                `;
-                container.appendChild(div);
-            });
-        }
+            // Эффект глитча
+            canvas.classList.add('glitch-active');
+            setTimeout(() => canvas.classList.remove('glitch-active'), 150);
 
-        window.onresize = initParticles;
-        initParticles();
-        draw();
-        
-        // Интервалы
-        setInterval(fetchPulse, 10000); 
-        fetchPulse();
-    </script>
-</body>
-</html>
+            // Локальный лог
+            const log = { agent: "SYSTEM", time: new Date().toLocaleTimeString(), message: "Зафиксирован внешний импульс в
