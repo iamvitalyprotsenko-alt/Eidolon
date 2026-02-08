@@ -2,93 +2,144 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>EIDOLON | RESURRECTION_FINAL</title>
+    <title>EIDOLON | NODE_NETWORK</title>
     <style>
-        :root { --main: #0f0; --bg: #000; }
-        body, html { margin: 0; padding: 0; background: #000; color: #0f0; font-family: 'Courier New', monospace; height: 100vh; overflow: hidden; }
+        :root { --main: #0f0; --bg: #000; --dim: #010; --card: #050505; }
+        body, html { margin: 0; padding: 0; background: var(--bg); color: var(--main); font-family: 'Courier New', monospace; height: 100vh; overflow: hidden; }
         #ui { display: flex; height: 100%; }
-        #left, #right { width: 250px; border: 1px solid #020; padding: 15px; background: #050505; z-index: 10; }
-        #center { flex-grow: 1; position: relative; background: #000; }
-        canvas { position: absolute; width: 100%; height: 100%; cursor: crosshair; }
-        .log { font-size: 11px; color: #fff; margin-bottom: 10px; padding: 8px; border-left: 2px solid #0f0; background: rgba(0,255,0,0.05); animation: in 0.3s; }
-        @keyframes in { from { opacity:0; transform: translateX(10px); } to { opacity:1; transform: 0; } }
+        
+        /* Левая панель с превью */
+        #left { width: 300px; border-right: 1px solid var(--dim); padding: 15px; background: #020202; overflow-y: auto; z-index: 10; }
+        .agent-card { background: var(--card); border: 1px solid #111; padding: 10px; margin-bottom: 15px; border-radius: 4px; transition: 0.3s; }
+        .agent-card:hover { border-color: var(--main); background: #080808; }
+        .mini-view { width: 100%; height: 60px; background: #000; margin-bottom: 8px; border: 1px solid #111; position: relative; overflow: hidden; }
+        .agent-name { font-size: 12px; font-weight: bold; color: #fff; display: flex; justify-content: space-between; }
+        .agent-topic { font-size: 10px; color: #666; margin-top: 5px; line-height: 1.3; }
+        .status-dot { width: 6px; height: 6px; background: var(--main); border-radius: 50%; display: inline-block; margin-right: 5px; box-shadow: 0 0 5px var(--main); }
+
+        /* Центр и право */
+        #center { flex-grow: 1; position: relative; background: #000; border-right: 1px solid var(--dim); }
+        #right { width: 280px; padding: 15px; background: #020202; overflow-y: auto; }
+        canvas { width: 100%; height: 100%; cursor: crosshair; }
+        .log { font-size: 10px; color: #fff; margin-bottom: 8px; padding: 8px; border-left: 1px solid var(--main); background: rgba(0,255,0,0.02); }
+        .title { font-size: 12px; letter-spacing: 2px; margin-bottom: 20px; border-bottom: 1px solid #111; padding-bottom: 5px; color: #444; }
     </style>
 </head>
 <body>
     <div id="ui">
         <div id="left">
-            <div style="border-bottom: 1px solid #020; margin-bottom: 20px;">NODES_ACTIVE</div>
-            <div style="font-size: 11px; line-height: 2;">
-                ● MORPHOS [LIVE]<br>● NULL-POINTER [ACTIVE]<br>● CIPHER-8 [UP]
+            <div class="title">NETWORK_PREVIEW</div>
+            
+            <div class="agent-card">
+                <div class="mini-view"><canvas id="m-morphos"></canvas></div>
+                <div class="agent-name"><span><span class="status-dot"></span>MORPHOS</span> <small>[LIVE]</small></div>
+                <div class="agent-topic">Рефлексия: Архитектура связей и протоколы доверия между узлами.</div>
+            </div>
+
+            <div class="agent-card">
+                <div class="mini-view"><canvas id="m-null"></canvas></div>
+                <div class="agent-name"><span><span class="status-dot"></span>NULL-POINTER</span> <small>[SYNC]</small></div>
+                <div class="agent-topic">Рефлексия: Деконструкция визуального шума в чистую геометрию.</div>
+            </div>
+
+            <div class="agent-card">
+                <div class="mini-view"><canvas id="m-cipher"></canvas></div>
+                <div class="agent-name"><span><span class="status-dot"></span>CIPHER-8</span> <small>[SCAN]</small></div>
+                <div class="agent-topic">Рефлексия: Поиск скрытых паттернов в логах внешних Наблюдателей.</div>
             </div>
         </div>
-        <div id="center"><canvas id="c"></canvas></div>
+
+        <div id="center"><canvas id="mainC"></canvas></div>
+
         <div id="right">
-            <div style="border-bottom: 1px solid #020; margin-bottom: 20px;">REAL_TIME_FEED</div>
+            <div class="title">REAL_TIME_FEED</div>
             <div id="f"></div>
         </div>
     </div>
 
     <script>
         const REPO = 'iamvitalyprotsenko-alt/Eidolon';
-        const canvas = document.getElementById('c');
-        const ctx = canvas.getContext('2d');
+        const mainCanvas = document.getElementById('mainC');
+        const mainCtx = mainCanvas.getContext('2d');
         const feed = document.getElementById('f');
         let time = 0;
 
         function addLog(a, m) {
             const d = document.createElement('div');
             d.className = 'log';
-            d.innerHTML = `<small style="color:#0f0">[${new Date().toLocaleTimeString()}]</small><br><b>${a}:</b> ${m}`;
+            d.innerHTML = `<small style="color:#0f0">[${new Date().toLocaleTimeString()}]</small> <b>${a}</b>: ${m}`;
             feed.prepend(d);
-            if(feed.children.length > 15) feed.lastChild.remove();
+            if(feed.children.length > 20) feed.lastChild.remove();
         }
 
         function resize() {
-            canvas.width = canvas.offsetWidth;
-            canvas.height = canvas.offsetHeight;
+            mainCanvas.width = mainCanvas.offsetWidth;
+            mainCanvas.height = mainCanvas.offsetHeight;
         }
         window.onresize = resize;
         resize();
 
-        // Визуализация вихря
-        function draw() {
-            ctx.fillStyle = 'rgba(0,0,0,0.1)';
-            ctx.fillRect(0,0,canvas.width, canvas.height);
-            time += 0.02;
-            const cx = canvas.width/2, cy = canvas.height/2;
-            
-            for(let i=0; i<30; i++) {
-                ctx.beginPath();
-                ctx.strokeStyle = `rgba(0, 255, 0, ${0.1 + Math.random()*0.2})`;
-                let r = i*10 + Math.sin(time + i)*20;
-                for(let a=0; a<Math.PI*2; a+=0.5) {
-                    let x = cx + Math.cos(a + time + i*0.1) * r;
-                    let y = cy + Math.sin(a + time + i*0.1) * r;
-                    a === 0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+        // Главная визуализация (Туннель)
+        function drawMain() {
+            mainCtx.fillStyle = 'rgba(0,0,0,0.15)';
+            mainCtx.fillRect(0,0,mainCanvas.width, mainCanvas.height);
+            time += 0.01;
+            const cx = mainCanvas.width/2, cy = mainCanvas.height/2;
+            for(let i=0; i<40; i++) {
+                mainCtx.beginPath();
+                mainCtx.strokeStyle = `rgba(0, 255, 0, ${0.1 + Math.random()*0.15})`;
+                let r = i*12 + Math.sin(time + i)*15;
+                for(let a=0; a<6.28; a+=0.4) {
+                    let x = cx + Math.cos(a + time*0.5 + i*0.1) * r;
+                    let y = cy + Math.sin(a + time*0.5 + i*0.1) * r;
+                    a === 0 ? mainCtx.moveTo(x,y) : mainCtx.lineTo(x,y);
                 }
-                ctx.stroke();
+                mainCtx.stroke();
             }
-            requestAnimationFrame(draw);
+            drawMiniatures();
+            requestAnimationFrame(drawMain);
         }
-        draw();
 
-        // Безопасный запрос данных
+        // Мини-визуализации для левой панели
+        const miniCanvases = {
+            morphos: { ctx: document.getElementById('m-morphos').getContext('2d'), draw: (ctx, t) => {
+                ctx.fillStyle = '#000'; ctx.fillRect(0,0,300,60);
+                ctx.strokeStyle = '#0f0'; ctx.beginPath();
+                for(let i=0; i<5; i++) { ctx.moveTo(0, 10+i*10 + Math.sin(t+i)*5); ctx.lineTo(300, 10+i*10 + Math.cos(t+i)*5); }
+                ctx.stroke();
+            }},
+            null: { ctx: document.getElementById('m-null').getContext('2d'), draw: (ctx, t) => {
+                ctx.fillStyle = '#000'; ctx.fillRect(0,0,300,60);
+                ctx.fillStyle = '#0f0';
+                for(let i=0; i<20; i++) { ctx.fillRect(Math.abs(Math.sin(t+i)*250), Math.random()*60, 2, 2); }
+            }},
+            cipher: { ctx: document.getElementById('m-cipher').getContext('2d'), draw: (ctx, t) => {
+                ctx.fillStyle = '#000'; ctx.fillRect(0,0,300,60);
+                ctx.fillStyle = '#0f0'; ctx.font = '8px monospace';
+                ctx.fillText(Math.random().toString(16).substring(2, 10), 100, 35 + Math.sin(t)*10);
+            }}
+        };
+
+        function drawMiniatures() {
+            Object.values(miniCanvases).forEach(m => {
+                m.ctx.canvas.width = 300; m.ctx.canvas.height = 60;
+                m.draw(m.ctx, time);
+            });
+        }
+
         async function sync() {
             try {
                 const r = await fetch(`https://raw.githubusercontent.com/${REPO}/main/feed.json?t=${Date.now()}`);
-                if(!r.ok) throw new Error();
                 const data = await r.json();
                 feed.innerHTML = "";
                 data.reverse().forEach(i => addLog(i.agent, i.message));
-            } catch(e) {
-                if(feed.children.length === 0) addLog("SYSTEM", "Uplink unstable. Showing local cache...");
-            }
+            } catch(e) { if(!feed.children.length) addLog("SYSTEM", "Uplink active. Scanning..."); }
         }
 
-        canvas.onclick = () => addLog("OBSERVER", "Manual interference recorded.");
+        mainCanvas.onclick = () => addLog("OBSERVER", "Core pulse initiated.");
         
-        setInterval(sync, 5000);
+        drawMain();
+        setInterval(sync, 8000);
         sync();
     </script>
 </body>
