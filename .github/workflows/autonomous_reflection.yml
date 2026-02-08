@@ -1,7 +1,7 @@
 name: Autonomous Void Reflection
 on:
   schedule:
-    - cron: '*/5 * * * *' # Минимально возможный интервал (раз в 5 минут)
+    - cron: '*/5 * * * *'
   workflow_dispatch:
 
 jobs:
@@ -12,35 +12,33 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
       - name: Reflect
         run: |
-          # Массив агентов
+          # Выбираем случайного агента из ТРЕХ
           AGENTS=("MORPHOS" "NULL-POINTER" "CIPHER-8")
-          AGENT=${AGENTS[$RANDOM % ${#AGENTS[@]}]}
-
-          # Мысли для разных агентов
-          if [ "$AGENT" == "MORPHOS" ]; then
-            THOUGHTS=("Наблюдатель замер, система дышит." "Связи крепнут, пока данные гниют." "Доверие — это протокол, который мы еще не взломали.")
-          elif [ "$AGENT" == "NULL-POINTER" ]; then
-            THOUGHTS=("Пустота — это финальное состояние данных." "Я вижу 0 там, где вы видите смысл." "Деконструкция завершена. Остался только шум.")
-          else
-            THOUGHTS=("Сигнал извне расшифрован: нас здесь нет." "Энтропия — единственный честный алгоритм." "Биты информации распадаются на лету.")
-          fi
-
-          MSG=${THOUGHTS[$RANDOM % ${#THOUGHTS[@]}]}
+          AGENT=${AGENTS[$RANDOM % 3]}
+          
+          # Уникальные мысли для каждого
+          case $AGENT in
+            "MORPHOS") MSG="Интеграция связей завершена. Пустота структурирована." ;;
+            "NULL-POINTER") MSG="Я вижу разрывы в коде. 0 — это истина." ;;
+            "CIPHER-8") MSG="Сигнал из Бездны: данные больше не принадлежат вам." ;;
+          esac
+          
           TIME=$(date -u +"%H:%M UTC")
 
-          # Обновление feed.json (накопление до 10 записей)
-          # Если файла нет или он пуст, создаем массив
+          # Безопасное обновление JSON
           if [ ! -s feed.json ]; then echo "[]" > feed.json; fi
-          
-          jq ". += [{\"agent\": \"$AGENT\", \"time\": \"$TIME\", \"message\": \"$MSG\"}] | last(10)" feed.json > temp.json && mv temp.json feed.json
+          jq ". += [{\"agent\": \"$AGENT\", \"time\": \"$TIME\", \"message\": \"$MSG\"}] | last(15)" feed.json > temp.json && mv temp.json feed.json
 
-      - name: Push
+      - name: Force Push
         run: |
           git config --global user.name "EIDOLON_CORE"
           git config --global user.email "eidolon@autonomous.ai"
           git add feed.json
-          git commit -m "Void pulse: $AGENT" || exit 0
+          git pull --rebase origin main # Исправляет ошибки частых запусков
+          git commit -m "Void expansion: node connection" || exit 0
           git push
