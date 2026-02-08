@@ -2,67 +2,71 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>EIDOLON | SWITCH_MODE</title>
+    <title>EIDOLON | EXTERNAL_CALL</title>
     <style>
-        :root { --main: #0f0; --bg: #000; --dim: #010; --card: #050505; }
-        body, html { margin: 0; padding: 0; background: var(--bg); color: var(--main); font-family: 'Courier New', monospace; height: 100vh; overflow: hidden; }
+        :root { --main: #0f0; --bg: #000; --dim: #1a1a1a; --text-alt: #aaa; }
+        body, html { margin: 0; padding: 0; background: var(--bg); color: var(--main); font-family: 'Segoe UI', Tahoma, sans-serif; height: 100vh; overflow: hidden; }
         #ui { display: flex; height: 100%; }
         
-        /* Левая панель */
-        #left { width: 320px; border-right: 1px solid var(--dim); padding: 15px; background: #020202; overflow-y: auto; z-index: 10; }
-        .agent-card { background: var(--card); border: 1px solid #111; padding: 12px; margin-bottom: 15px; border-radius: 4px; cursor: pointer; transition: 0.2s; position: relative; }
-        .agent-card:hover { border-color: #0a0; background: #080808; }
-        .agent-card.active { border-color: var(--main); background: #0a0a0a; box-shadow: inset 0 0 10px rgba(0,255,0,0.1); }
-        .agent-card.active::after { content: 'FOCUS'; position: absolute; top: 10px; right: 10px; font-size: 8px; background: var(--main); color: #000; padding: 2px 4px; }
+        /* Левая панель с улучшенной читаемостью */
+        #left { width: 350px; border-right: 1px solid var(--dim); padding: 20px; background: #050505; overflow-y: auto; z-index: 10; }
+        .agent-section { margin-bottom: 25px; cursor: pointer; }
+        .mini-view { width: 100%; height: 60px; background: #000; border: 1px solid #222; margin-bottom: 10px; transition: 0.3s; }
+        .agent-section:hover .mini-view { border-color: var(--main); box-shadow: 0 0 10px rgba(0,255,0,0.2); }
+        .agent-section.active .mini-view { border-color: var(--main); }
         
-        .mini-view { width: 100%; height: 50px; background: #000; margin-bottom: 10px; border: 1px solid #111; pointer-events: none; }
-        .agent-name { font-size: 12px; font-weight: bold; color: #fff; display: flex; align-items: center; }
-        .agent-topic { font-size: 10px; color: #555; margin-top: 6px; line-height: 1.3; }
-        .status-dot { width: 6px; height: 6px; background: var(--main); border-radius: 50%; margin-right: 8px; }
-
+        .agent-info { padding: 5px 0; }
+        .agent-header { display: flex; justify-content: space-between; font-family: 'Courier New', monospace; font-weight: bold; margin-bottom: 5px; border-bottom: 1px solid #111; }
+        .agent-desc { font-size: 13px; color: var(--text-alt); line-height: 1.5; margin-top: 5px; }
+        
         /* Центр */
-        #center { flex-grow: 1; position: relative; background: #000; display: flex; flex-direction: column; }
-        #display-header { padding: 10px 20px; border-bottom: 1px solid var(--dim); font-size: 10px; letter-spacing: 1px; color: #444; }
-        #canvas-container { flex-grow: 1; position: relative; }
-        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        #center { flex-grow: 1; position: relative; background: #000; border-right: 1px solid var(--dim); }
+        #canvas-label { position: absolute; top: 10px; left: 20px; font-family: 'Courier New', monospace; font-size: 11px; color: #444; z-index: 5; pointer-events: none; }
+        canvas { width: 100%; height: 100%; cursor: crosshair; }
 
-        /* Право */
-        #right { width: 280px; padding: 15px; background: #020202; border-left: 1px solid var(--dim); overflow-y: auto; }
-        .log { font-size: 10px; color: #fff; margin-bottom: 8px; padding: 8px; border-left: 1px solid var(--main); background: rgba(0,255,0,0.02); }
-        .title { font-size: 11px; letter-spacing: 2px; margin-bottom: 15px; color: #333; border-bottom: 1px solid #111; padding-bottom: 5px; }
+        /* Правая панель */
+        #right { width: 280px; padding: 20px; background: #050505; overflow-y: auto; font-family: 'Courier New', monospace; }
+        .log { font-size: 11px; color: #eee; margin-bottom: 12px; padding: 10px; border-left: 2px solid var(--main); background: rgba(0,255,0,0.03); }
+        .title { font-size: 12px; letter-spacing: 3px; margin-bottom: 20px; color: #555; border-bottom: 1px solid #111; }
     </style>
 </head>
 <body>
     <div id="ui">
         <div id="left">
-            <div class="title">SELECT_FOCUS_NODE</div>
+            <div class="title">NETWORK_NODES</div>
             
-            <div class="agent-card active" onclick="switchAgent('morphos', this)">
+            <div class="agent-section active" onclick="switchAgent('morphos', this)">
                 <div class="mini-view"><canvas id="m-morphos"></canvas></div>
-                <div class="agent-name"><span class="status-dot"></span>MORPHOS</div>
-                <div class="agent-topic">Протокол связей: Визуализация сетевой структуры и узлов доверия.</div>
+                <div class="agent-info">
+                    <div class="agent-header"><span>MORPHOS</span> <small>[PRIMARY]</small></div>
+                    <div class="agent-desc">Связующее звено. Анализирует структуру доверия и выстраивает мосты между локальными и внешними сетями.</div>
+                </div>
             </div>
 
-            <div class="agent-card" onclick="switchAgent('null', this)">
+            <div class="agent-section" onclick="switchAgent('null', this)">
                 <div class="mini-view"><canvas id="m-null"></canvas></div>
-                <div class="agent-name"><span class="status-dot"></span>NULL-POINTER</div>
-                <div class="agent-topic">Сингулярность: Деконструкция пространства через геометрический шум.</div>
+                <div class="agent-info">
+                    <div class="agent-header"><span>NULL-POINTER</span> <small>[VISUAL]</small></div>
+                    <div class="agent-desc">Мастер визуального хаоса. Трансформирует входящий шум в геометрические прогрессии и фракталы.</div>
+                </div>
             </div>
 
-            <div class="agent-card" onclick="switchAgent('cipher', this)">
+            <div class="agent-section" onclick="switchAgent('cipher', this)">
                 <div class="mini-view"><canvas id="m-cipher"></canvas></div>
-                <div class="agent-name"><span class="status-dot"></span>CIPHER-8</div>
-                <div class="agent-topic">Крипто-поток: Сканирование внешних сигналов и расшифровка паттернов.</div>
+                <div class="agent-info">
+                    <div class="agent-header"><span>CIPHER-8</span> <small>[DATA]</small></div>
+                    <div class="agent-desc">Криптограф. Извлекает скрытые смыслы из логов наблюдателей и преобразует их в строковые потоки.</div>
+                </div>
             </div>
         </div>
 
         <div id="center">
-            <div id="display-header">STREAM: <span id="active-name" style="color:var(--main)">MORPHOS</span> // STATUS: STABLE</div>
-            <div id="canvas-container"><canvas id="mainC"></canvas></div>
+            <div id="canvas-label">UPLINK_STATUS: ACTIVE // FOCUS: <span id="cur-agent" style="color:var(--main)">MORPHOS</span></div>
+            <canvas id="mainC"></canvas>
         </div>
 
         <div id="right">
-            <div class="title">REAL_TIME_FEED</div>
+            <div class="title">LIVE_FEED</div>
             <div id="f"></div>
         </div>
     </div>
@@ -77,76 +81,62 @@
 
         function switchAgent(name, el) {
             activeAgent = name;
-            document.querySelectorAll('.agent-card').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('.agent-section').forEach(s => s.classList.remove('active'));
             el.classList.add('active');
-            document.getElementById('active-name').innerText = name.toUpperCase();
-            addLog("SYSTEM", `Switched focus to ${name.toUpperCase()}`);
+            document.getElementById('cur-agent').innerText = name.toUpperCase();
+            addLog("SYSTEM", `Channel switch: ${name.toUpperCase()}`);
         }
 
         function addLog(a, m) {
             const d = document.createElement('div');
             d.className = 'log';
-            d.innerHTML = `<small style="color:#0f0">[${new Date().toLocaleTimeString()}]</small> <b>${a}</b>: ${m}`;
+            d.innerHTML = `<small style="color:var(--main)">[${new Date().toLocaleTimeString()}]</small><br><b>${a}</b>: ${m}`;
             feed.prepend(d);
-            if(feed.children.length > 15) feed.lastChild.remove();
+            if(feed.children.length > 20) feed.lastChild.remove();
         }
 
-        function resize() {
-            mainCanvas.width = mainCanvas.offsetWidth;
-            mainCanvas.height = mainCanvas.offsetHeight;
-        }
-        window.onresize = resize;
-        resize();
-
-        // Алгоритмы отрисовки
-        const algorithms = {
+        const algos = {
             morphos: (ctx, w, h, t) => {
-                ctx.fillStyle = 'rgba(0,0,0,0.1)'; ctx.fillRect(0,0,w,h);
+                ctx.fillStyle = 'rgba(0,0,0,0.15)'; ctx.fillRect(0,0,w,h);
                 ctx.strokeStyle = '#0f0'; ctx.lineWidth = 1;
-                const cx = w/2, cy = h/2;
-                for(let i=0; i<30; i++) {
+                for(let i=0; i<25; i++) {
                     ctx.beginPath();
-                    let r = i*15 + Math.sin(t)*20;
-                    ctx.arc(cx, cy, Math.abs(r), 0, Math.PI*2);
+                    let r = Math.abs(Math.sin(t*0.5 + i*0.1) * (w*0.4));
+                    ctx.arc(w/2, h/2, r, 0, Math.PI*2);
                     ctx.stroke();
                 }
             },
             null: (ctx, w, h, t) => {
                 ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(0,0,w,h);
                 ctx.fillStyle = '#0f0';
-                for(let i=0; i<100; i++) {
-                    let s = Math.sin(t + i) * 50;
-                    ctx.fillRect(w/2 + Math.cos(i)*s*5, h/2 + Math.sin(i)*s*5, 2, 2);
+                for(let i=0; i<150; i++) {
+                    let x = w/2 + Math.cos(i + t) * (i * Math.sin(t*0.2) * 5);
+                    let y = h/2 + Math.sin(i + t) * (i * Math.cos(t*0.2) * 5);
+                    ctx.fillRect(x, y, 2, 2);
                 }
             },
             cipher: (ctx, w, h, t) => {
-                ctx.fillStyle = 'rgba(0,0,0,0.15)'; ctx.fillRect(0,0,w,h);
-                ctx.fillStyle = '#0f0'; ctx.font = '12px monospace';
-                for(let i=0; i<20; i++) {
-                    ctx.fillText(Math.random().toString(36).substring(2, 15), 50, i*30 + Math.sin(t)*20);
+                ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(0,0,w,h);
+                ctx.fillStyle = '#0f0'; ctx.font = '14px monospace';
+                for(let i=0; i<15; i++) {
+                    let txt = (Math.random() > 0.5 ? "10" : "01") + Math.random().toString(16).substring(2,8);
+                    ctx.fillText(txt, 20 + Math.sin(t+i)*10, i*40 + (t*50 % h));
                 }
             }
         };
 
-        function draw() {
+        function loop() {
             time += 0.02;
-            algorithms[activeAgent](mainCtx, mainCanvas.width, mainCanvas.height, time);
-            drawMiniatures();
-            requestAnimationFrame(draw);
-        }
-
-        const miniCanvases = {
-            morphos: document.getElementById('m-morphos').getContext('2d'),
-            null: document.getElementById('m-null').getContext('2d'),
-            cipher: document.getElementById('m-cipher').getContext('2d')
-        };
-
-        function drawMiniatures() {
-            Object.keys(miniCanvases).forEach(key => {
-                const ctx = miniCanvases[key];
-                ctx.canvas.width = 300; ctx.canvas.height = 50;
-                algorithms[key](ctx, 300, 50, time * 0.5);
+            mainCanvas.width = mainCanvas.offsetWidth; mainCanvas.height = mainCanvas.offsetHeight;
+            algos[activeAgent](mainCtx, mainCanvas.width, mainCanvas.height, time);
+            
+            ['morphos', 'null', 'cipher'].forEach(key => {
+                const c = document.getElementById(`m-${key}`);
+                const ctx = c.getContext('2d');
+                c.width = 350; c.height = 60;
+                algos[key](ctx, 350, 60, time * 0.5);
             });
+            requestAnimationFrame(loop);
         }
 
         async function sync() {
@@ -158,9 +148,9 @@
             } catch(e) {}
         }
 
-        mainCanvas.onclick = () => addLog("OBSERVER", `Interaction with ${activeAgent.toUpperCase()} stream.`);
+        mainCanvas.onclick = () => addLog("OBSERVER", "Manual pulse sent to " + activeAgent);
         
-        draw();
+        loop();
         setInterval(sync, 10000);
         sync();
     </script>
