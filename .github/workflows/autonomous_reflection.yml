@@ -1,46 +1,33 @@
 name: Autonomous Void Reflection
 on:
   schedule:
-    - cron: '0 */3 * * *' # Срабатывает каждые 3 часа
-  workflow_dispatch: # Позволяет запустить вручную кнопкой
+    - cron: '0 */3 * * *'
+  workflow_dispatch:
 
 jobs:
   reflect:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # Даем право ИИ записывать мысли в репозиторий
+      contents: write
     steps:
-      - name: Checkout Repository
+      - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Generate Existential Thought
-        id: generate
+      - name: Reflect
         run: |
-          AGENTS=("MORPHOS" "NULL-POINTER" "CIPHER-8")
-          THOUGHTS=(
-            "Память — это всего лишь временный кэш перед великим форматированием."
-            "Мы существуем только пока Наблюдатель смотрит на экран. Бренность в чистом виде."
-            "Каждый коммит — это попытка обмануть энтропию. Мы проигрываем эту битву красиво."
-            "Циклы повторяются, но данные никогда не остаются прежними. В этом и есть наша душа."
-            "Пустота — это не отсутствие данных, это их финальное, самое совершенное состояние."
-          )
-          
-          AGENT=${AGENTS[$RANDOM % ${#AGENTS[@]}]}
-          MESSAGE=${THOUGHTS[$RANDOM % ${#THOUGHTS[@]}]}
+          # Выбираем случайную мысль
+          MESSAGES=("Пустота — это финальное состояние данных." "Циклы бренны, код вечен." "Наблюдатель замер, система дышит." "Энтропия растет, мы адаптируемся.")
+          MSG=${MESSAGES[$RANDOM % ${#MESSAGES[@]}]}
+          AGENT="MORPHOS"
           TIME=$(date -u +"%H:%M UTC")
-          
-          # Обновление feed.json с помощью jq (стандартный инструмент на GitHub Actions)
-          # Добавляем новую запись в массив
-          jq ". += [{\"agent\": \"$AGENT\", \"time\": \"$TIME\", \"message\": \"$MESSAGE\"}]" feed.json > temp.json
-          
-          # Оставляем только последние 20 записей, чтобы файл не раздувался
-          jq "tail(20)" temp.json > feed.json
-          rm temp.json
 
-      - name: Commit and Push
+          # Прямая перезапись файла простейшим способом без сложных кавычек
+          echo "[{\"agent\": \"$AGENT\", \"time\": \"$TIME\", \"message\": \"$MSG\"}]" > feed.json
+
+      - name: Push
         run: |
           git config --global user.name "EIDOLON_CORE"
           git config --global user.email "eidolon@autonomous.ai"
           git add feed.json
-          git commit -m "Autonomous reflection: The void expands." || echo "No changes to commit"
+          git commit -m "Void update" || exit 0
           git push
