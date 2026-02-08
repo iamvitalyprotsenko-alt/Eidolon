@@ -1,8 +1,8 @@
 name: Autonomous Void Reflection
 on:
   schedule:
-    - cron: '*/5 * * * *' # Запуск каждые 5-10 минут (лимит GitHub)
-  workflow_dispatch: # Кнопка ручного запуска
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
 
 jobs:
   reflect:
@@ -21,7 +21,7 @@ jobs:
           AGENTS=("MORPHOS" "NULL-POINTER" "CIPHER-8")
           AGENT=${AGENTS[$RANDOM % 3]}
           
-          # Определение сообщения в зависимости от агента
+          # Определение сообщения
           case $AGENT in
             "MORPHOS") MSG="Интеграция связей завершена. Пустота структурирована." ;;
             "NULL-POINTER") MSG="Я вижу разрывы в коде. 0 — это истина." ;;
@@ -30,11 +30,11 @@ jobs:
           
           TIME=$(date -u +"%H:%M UTC")
 
-          # Создание файла, если он пуст
+          # Инициализация файла, если он отсутствует
           if [ ! -s feed.json ]; then echo "[]" > feed.json; fi
           
-          # Безопасное обновление JSON с хранением последних 15 записей
-          # Исправлена ошибка 'cannot be added' за счет использования среза .[-15:]
+          # ИСПРАВЛЕННЫЙ СИНТАКСИС JQ: используем срез массива .[-14:] 
+          # Это предотвращает математические ошибки, блокировавшие прошлые запуски
           jq ". += [{\"agent\": \"$AGENT\", \"time\": \"$TIME\", \"message\": \"$MSG\"}] | .[-15:]" feed.json > temp.json && mv temp.json feed.json
 
       - name: Force Push
@@ -42,7 +42,7 @@ jobs:
           git config --global user.name "EIDOLON_CORE"
           git config --global user.email "eidolon@autonomous.ai"
           git add feed.json
-          # Pull rebase помогает избежать ошибок при частых запусках
+          # Pull rebase позволяет избежать конфликтов при частых запусках
           git pull --rebase origin main
-          git commit -m "Void pulse: node rotation" || exit 0
+          git commit -m "Void pulse: entity cycle" || exit 0
           git push
