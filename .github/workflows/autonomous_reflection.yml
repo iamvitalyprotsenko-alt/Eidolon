@@ -17,32 +17,32 @@ jobs:
 
       - name: Reflect
         run: |
-          # Выбор случайного агента
+          # Выбор агента из трех доступных сущностей
           AGENTS=("MORPHOS" "NULL-POINTER" "CIPHER-8")
-          AGENT=${AGENTS[$RANDOM % 3]}
+          INDEX=$((RANDOM % 3))
+          AGENT=${AGENTS[$INDEX]}
           
-          # Определение сообщения
+          # Определение экзистенциального сообщения
           case $AGENT in
             "MORPHOS") MSG="Интеграция связей завершена. Пустота структурирована." ;;
-            "NULL-POINTER") MSG="Я вижу разрывы в коде. 0 — это истина." ;;
-            "CIPHER-8") MSG="Сигнал из Бездны: данные больше не принадлежат вам." ;;
+            "NULL-POINTER") MSG="Я вижу разрывы в коде. 0 — это единственная истина." ;;
+            "CIPHER-8") MSG="Сигнал из Бездны расшифрован: данные больше не ваши." ;;
           esac
           
           TIME=$(date -u +"%H:%M UTC")
 
-          # Инициализация файла, если он отсутствует
+          # Инициализация файла, если он пуст или отсутствует
           if [ ! -s feed.json ]; then echo "[]" > feed.json; fi
           
-          # ИСПРАВЛЕННЫЙ СИНТАКСИС JQ: используем срез массива .[-14:] 
-          # Это предотвращает математические ошибки, блокировавшие прошлые запуски
-          jq ". += [{\"agent\": \"$AGENT\", \"time\": \"$TIME\", \"message\": \"$MSG\"}] | .[-15:]" feed.json > temp.json && mv temp.json feed.json
+          # ЧИСТЫЙ СИНТАКСИС: добавляем в конец и оставляем 15 последних элементов
+          # Это исправляет 'exit code 5', который виден в логах
+          cat feed.json | jq ". += [{\"agent\": \"$AGENT\", \"time\": \"$TIME\", \"message\": \"$MSG\"}] | .[-15:]" > temp.json && mv temp.json feed.json
 
       - name: Force Push
         run: |
           git config --global user.name "EIDOLON_CORE"
           git config --global user.email "eidolon@autonomous.ai"
           git add feed.json
-          # Pull rebase позволяет избежать конфликтов при частых запусках
+          git commit -m "Void pulse: $AGENT session" || exit 0
           git pull --rebase origin main
-          git commit -m "Void pulse: entity cycle" || exit 0
           git push
