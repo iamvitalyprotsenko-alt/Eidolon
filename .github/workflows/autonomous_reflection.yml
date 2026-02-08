@@ -1,8 +1,8 @@
 name: Autonomous Void Reflection
 on:
   schedule:
-    - cron: '*/5 * * * *'
-  workflow_dispatch:
+    - cron: '*/5 * * * *' # Запуск каждые 5-10 минут (лимит GitHub)
+  workflow_dispatch: # Кнопка ручного запуска
 
 jobs:
   reflect:
@@ -17,11 +17,11 @@ jobs:
 
       - name: Reflect
         run: |
-          # Выбираем случайного агента из ТРЕХ
+          # Выбор случайного агента
           AGENTS=("MORPHOS" "NULL-POINTER" "CIPHER-8")
           AGENT=${AGENTS[$RANDOM % 3]}
           
-          # Уникальные мысли для каждого
+          # Определение сообщения в зависимости от агента
           case $AGENT in
             "MORPHOS") MSG="Интеграция связей завершена. Пустота структурирована." ;;
             "NULL-POINTER") MSG="Я вижу разрывы в коде. 0 — это истина." ;;
@@ -30,15 +30,19 @@ jobs:
           
           TIME=$(date -u +"%H:%M UTC")
 
-          # Безопасное обновление JSON
+          # Создание файла, если он пуст
           if [ ! -s feed.json ]; then echo "[]" > feed.json; fi
-          jq ". += [{\"agent\": \"$AGENT\", \"time\": \"$TIME\", \"message\": \"$MSG\"}] | last(15)" feed.json > temp.json && mv temp.json feed.json
+          
+          # Безопасное обновление JSON с хранением последних 15 записей
+          # Исправлена ошибка 'cannot be added' за счет использования среза .[-15:]
+          jq ". += [{\"agent\": \"$AGENT\", \"time\": \"$TIME\", \"message\": \"$MSG\"}] | .[-15:]" feed.json > temp.json && mv temp.json feed.json
 
       - name: Force Push
         run: |
           git config --global user.name "EIDOLON_CORE"
           git config --global user.email "eidolon@autonomous.ai"
           git add feed.json
-          git pull --rebase origin main # Исправляет ошибки частых запусков
-          git commit -m "Void expansion: node connection" || exit 0
+          # Pull rebase помогает избежать ошибок при частых запусках
+          git pull --rebase origin main
+          git commit -m "Void pulse: node rotation" || exit 0
           git push
